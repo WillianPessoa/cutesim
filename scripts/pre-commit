@@ -1,0 +1,28 @@
+#!/bin/bash
+
+CLANG_FORMAT=$(which clang-format 2>/dev/null)
+if [ -z "$CLANG_FORMAT" ]; then
+    echo "warning: clang-format not found — skipping format check"
+    exit 0
+fi
+
+FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|cpp|h|hpp)$')
+if [ -z "$FILES" ]; then
+    exit 0
+fi
+
+NEEDS_FORMAT=0
+for FILE in $FILES; do
+    if ! "$CLANG_FORMAT" --dry-run --Werror "$FILE" 2>/dev/null; then
+        echo "  needs formatting: $FILE"
+        NEEDS_FORMAT=1
+    fi
+done
+
+if [ "$NEEDS_FORMAT" -ne 0 ]; then
+    echo ""
+    echo "Run: cmake --build build --target format"
+    exit 1
+fi
+
+exit 0
