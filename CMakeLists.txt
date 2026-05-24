@@ -27,35 +27,18 @@ target_sources(cutesim_lib PRIVATE
     src/queue.c
     src/event.c
     src/statistics.c
+    include/cutesim/simulation.h
+    include/cutesim/process.h
+    include/cutesim/queue.h
+    include/cutesim/event.h
+    include/cutesim/statistics.h
+    include/cutesim/config.h
 )
 target_include_directories(cutesim_lib PUBLIC include)
 target_compile_features(cutesim_lib PRIVATE c_std_11)
 
-find_program(CLANG_FORMAT clang-format)
-if(CLANG_FORMAT)
-    file(GLOB_RECURSE ALL_SOURCE_FILES
-        "${CMAKE_SOURCE_DIR}/src/*.c"
-        "${CMAKE_SOURCE_DIR}/include/*.h"
-        "${CMAKE_SOURCE_DIR}/apps/*.c"
-        "${CMAKE_SOURCE_DIR}/apps/*.cpp"
-        "${CMAKE_SOURCE_DIR}/apps/*.h"
-        "${CMAKE_SOURCE_DIR}/apps/*.hpp"
-        "${CMAKE_SOURCE_DIR}/tests/*.cpp"
-    )
-
-    add_custom_target(format
-        COMMAND ${CLANG_FORMAT} -i ${ALL_SOURCE_FILES}
-        COMMENT "Formatting source files"
-    )
-
-    add_custom_target(check-format
-        COMMAND ${CLANG_FORMAT} --dry-run --Werror ${ALL_SOURCE_FILES}
-        COMMENT "Checking source formatting"
-    )
-endif()
-
 include(CTest)
 
-add_subdirectory(apps/cli)
+add_subdirectory(apps/rr-feedback)
 add_subdirectory(apps/viewer)
 add_subdirectory(tests)

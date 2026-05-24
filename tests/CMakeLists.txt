@@ -7,7 +7,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
+add_subdirectory(cli)
 add_subdirectory(queue)
 add_subdirectory(process)
 add_subdirectory(simulation)
 add_subdirectory(integration)
+
