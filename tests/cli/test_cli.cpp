@@ -157,3 +157,55 @@ TEST(ParseArgs, ScenarioFileAsPositionalArg) {
     EXPECT_EQ(error, 0);
     EXPECT_STREQ(cfg.scenario_file, "scenario.txt");
 }
+
+// ---------------------------------------------------------------------------
+// Duration — fixed value and range
+// ---------------------------------------------------------------------------
+
+TEST(Duration, DiskFixed) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--disk-duration=5", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.disk_duration.min, 5);
+    EXPECT_EQ(cfg.disk_duration.max, 5);
+}
+
+TEST(Duration, DiskRange) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--disk-duration=3-8", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.disk_duration.min, 3);
+    EXPECT_EQ(cfg.disk_duration.max, 8);
+}
+
+TEST(Duration, TapeFixed) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--tape-duration=4", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.tape_duration.min, 4);
+    EXPECT_EQ(cfg.tape_duration.max, 4);
+}
+
+TEST(Duration, TapeRange) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--tape-duration=2-6", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.tape_duration.min, 2);
+    EXPECT_EQ(cfg.tape_duration.max, 6);
+}
+
+TEST(Duration, PrinterFixed) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--printer-duration=10", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.printer_duration.min, 10);
+    EXPECT_EQ(cfg.printer_duration.max, 10);
+}
+
+TEST(Duration, PrinterRange) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--printer-duration=1-3", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.printer_duration.min, 1);
+    EXPECT_EQ(cfg.printer_duration.max, 3);
+}
