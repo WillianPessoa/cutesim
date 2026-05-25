@@ -298,3 +298,57 @@ TEST(RunMode, LongFlagInteractiveSetsInteractive) {
     EXPECT_EQ(error, 0);
     EXPECT_EQ(cfg.run_mode, RUN_INTERACTIVE);
 }
+
+// ---------------------------------------------------------------------------
+// Validation — invalid inputs must set error = 1
+// ---------------------------------------------------------------------------
+
+TEST(Validation, UnknownFlagIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--unknown-flag=1", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, QuantumHiZeroIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--quantum-hi=0", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, QuantumLoZeroIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--quantum-lo=0", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, PIoAboveHundredIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-io=101", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, PIoBelowZeroIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-io=-1", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, DeviceProbsNotSummingToHundredIsError) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--p-disk=50",
+                    (char *)"--p-tape=30",  (char *)"--p-printer=10", nullptr};
+    int   error  = 0;
+    parse_args(4, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, DurationRangeMinAboveMaxIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--disk-duration=8-3", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
