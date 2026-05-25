@@ -255,3 +255,46 @@ TEST(IoMode, PrinterQueue) {
     SimConfig cfg    = parse_args(2, argv, &error);
     EXPECT_EQ(cfg.io_mode_printer, IO_MODE_QUEUE);
 }
+
+// ---------------------------------------------------------------------------
+// RunMode — batch, steps, interactive
+// ---------------------------------------------------------------------------
+
+TEST(RunMode, ShortFlagNSetsSteps) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"-n", (char *)"20", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.run_mode, RUN_STEPS);
+}
+
+TEST(RunMode, LongFlagStepsSetsSteps) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--steps=20", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.run_mode, RUN_STEPS);
+}
+
+TEST(RunMode, StepsValueIsStored) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--steps=42", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.steps, 42);
+}
+
+TEST(RunMode, ShortFlagISetsInteractive) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"-i", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.run_mode, RUN_INTERACTIVE);
+}
+
+TEST(RunMode, LongFlagInteractiveSetsInteractive) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--interactive", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.run_mode, RUN_INTERACTIVE);
+}
