@@ -352,3 +352,93 @@ TEST(Validation, DurationRangeMinAboveMaxIsError) {
     parse_args(2, argv, &error);
     EXPECT_EQ(error, 1);
 }
+
+TEST(Validation, FloatInPIoIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-io=33.33", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, FloatInPDiskIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-disk=33.33", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+// ---------------------------------------------------------------------------
+// DeviceProb — redistribution when 1 or 2 devices are explicitly set
+// ---------------------------------------------------------------------------
+
+TEST(DeviceProb, OnlyDiskSetSplitsRemainder) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-disk=50", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.p_disk,    50);
+    EXPECT_EQ(cfg.p_tape,    25);
+    EXPECT_EQ(cfg.p_printer, 25);
+}
+
+TEST(DeviceProb, OnlyTapeSetSplitsRemainder) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-tape=60", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.p_disk,    20);
+    EXPECT_EQ(cfg.p_tape,    60);
+    EXPECT_EQ(cfg.p_printer, 20);
+}
+
+TEST(DeviceProb, OnlyPrinterSetSplitsRemainder) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-printer=40", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.p_disk,    30);
+    EXPECT_EQ(cfg.p_tape,    30);
+    EXPECT_EQ(cfg.p_printer, 40);
+}
+
+TEST(DeviceProb, DiskAndTapeSetPrinterGetsRemainder) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-disk=50",
+                        (char *)"--p-tape=30", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.p_printer, 20);
+}
+
+TEST(DeviceProb, DiskAndPrinterSetTapeGetsRemainder) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-disk=40",
+                        (char *)"--p-printer=35", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.p_tape, 25);
+}
+
+TEST(DeviceProb, TapeAndPrinterSetDiskGetsRemainder) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-tape=60",
+                        (char *)"--p-printer=10", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.p_disk, 30);
+}
+
+TEST(DeviceProb, AllThreeExplicitSummingToHundredIsValid) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-disk=50",
+                        (char *)"--p-tape=30", (char *)"--p-printer=20", nullptr};
+    int       error  = 0;
+    parse_args(4, argv, &error);
+    EXPECT_EQ(error, 0);
+}
+
+TEST(DeviceProb, ExplicitValueExceedingHundredIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--p-disk=101", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
