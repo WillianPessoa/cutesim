@@ -62,38 +62,57 @@ static IoMode parse_io_mode(const char *str) {
     return IO_MODE_CONCURRENT;
 }
 
+/* Returns 0 and stores the value in *out when str is a clean base-10 integer.
+   Returns -1 on floats, trailing junk, or empty input. */
+static int parse_int_strict(const char *str, int *out) {
+    char *end = NULL;
+    long  val = strtol(str, &end, 10);
+    if (end == str || *end != '\0') {
+        return -1;
+    }
+    *out = (int)val;
+    return 0;
+}
+
 SimConfig parse_args(int argc, char **argv, int *error) {
-    *error        = 0;
-    SimConfig cfg = default_config();
+    *error          = 0;
+    SimConfig cfg   = default_config();
+    int disk_set    = 0;
+    int tape_set    = 0;
+    int printer_set = 0;
 
     optind = 1;
+    opterr = 0; /* suppress getopt's own error messages; we handle '?' ourselves */
 
     int c;
     while ((c = getopt_long(argc, argv, "n:iht", long_opts, NULL)) != -1) {
         switch (c) {
         case 'H':
-            cfg.quantum_hi = atoi(optarg);
+            if (parse_int_strict(optarg, &cfg.quantum_hi) != 0) { *error = 1; return cfg; }
             break;
         case 'L':
-            cfg.quantum_lo = atoi(optarg);
+            if (parse_int_strict(optarg, &cfg.quantum_lo) != 0) { *error = 1; return cfg; }
             break;
         case 'c':
-            cfg.process_count = atoi(optarg);
+            if (parse_int_strict(optarg, &cfg.process_count) != 0) { *error = 1; return cfg; }
             break;
         case 'a':
-            cfg.arrival_rate = atoi(optarg);
+            if (parse_int_strict(optarg, &cfg.arrival_rate) != 0) { *error = 1; return cfg; }
             break;
         case 'p':
-            cfg.p_io = atoi(optarg);
+            if (parse_int_strict(optarg, &cfg.p_io) != 0) { *error = 1; return cfg; }
             break;
         case 'D':
-            cfg.p_disk = atoi(optarg);
+            if (parse_int_strict(optarg, &cfg.p_disk) != 0) { *error = 1; return cfg; }
+            disk_set = 1;
             break;
         case 'T':
-            cfg.p_tape = atoi(optarg);
+            if (parse_int_strict(optarg, &cfg.p_tape) != 0) { *error = 1; return cfg; }
+            tape_set = 1;
             break;
         case 'P':
-            cfg.p_printer = atoi(optarg);
+            if (parse_int_strict(optarg, &cfg.p_printer) != 0) { *error = 1; return cfg; }
+            printer_set = 1;
             break;
         case 1:
             cfg.disk_duration = parse_duration(optarg);
@@ -113,12 +132,15 @@ SimConfig parse_args(int argc, char **argv, int *error) {
         case 6:
             cfg.io_mode_printer = parse_io_mode(optarg);
             break;
-        case 's':
-            cfg.seed = (unsigned)atoi(optarg);
+        case 's': {
+            int v;
+            if (parse_int_strict(optarg, &v) != 0) { *error = 1; return cfg; }
+            cfg.seed = (unsigned)v;
             break;
+        }
         case 'n':
+            if (parse_int_strict(optarg, &cfg.steps) != 0) { *error = 1; return cfg; }
             cfg.run_mode = RUN_STEPS;
-            cfg.steps    = atoi(optarg);
             break;
         case 't':
             cfg.trace = 1;
@@ -153,7 +175,41 @@ SimConfig parse_args(int argc, char **argv, int *error) {
         return cfg;
     }
 
-    if (cfg.p_disk > 0 && cfg.p_tape > 0 && cfg.p_printer > 0) {
+    /* device probability redistribution:
+       - 0 explicit: nothing to redistribute (no I/O configured)
+       - 1 or 2 explicit: remaining probability is split evenly among unset devices;
+         when the remainder is odd, the extra goes to the first unset device
+         in disk -> tape -> printer order
+       - 3 explicit: must sum to exactly 100 */
+    int n_explicit = disk_set + tape_set + printer_set;
+    if (n_explicit > 0 && n_explicit < 3) {
+        int assigned = (disk_set ? cfg.p_disk : 0)
+                     + (tape_set ? cfg.p_tape : 0)
+                     + (printer_set ? cfg.p_printer : 0);
+        int rem = 100 - assigned;
+        if (rem < 0) {
+            *error = 1;
+            return cfg;
+        }
+        int n_unset  = 3 - n_explicit;
+        int base     = rem / n_unset;
+        int leftover = rem % n_unset;
+        if (!disk_set) {
+            cfg.p_disk = base + (leftover > 0 ? 1 : 0);
+            if (leftover > 0) {
+                leftover--;
+            }
+        }
+        if (!tape_set) {
+            cfg.p_tape = base + (leftover > 0 ? 1 : 0);
+            if (leftover > 0) {
+                leftover--;
+            }
+        }
+        if (!printer_set) {
+            cfg.p_printer = base;
+        }
+    } else if (n_explicit == 3) {
         if (cfg.p_disk + cfg.p_tape + cfg.p_printer != 100) {
             *error = 1;
             return cfg;
