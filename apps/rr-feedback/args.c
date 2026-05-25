@@ -142,5 +142,30 @@ SimConfig parse_args(int argc, char **argv, int *error) {
         cfg.scenario_file = argv[optind];
     }
 
+    /* --- post-parse validation --- */
+    if (cfg.quantum_hi <= 0 || cfg.quantum_lo <= 0) {
+        *error = 1;
+        return cfg;
+    }
+
+    if (cfg.p_io < 0 || cfg.p_io > 100) {
+        *error = 1;
+        return cfg;
+    }
+
+    if (cfg.p_disk > 0 && cfg.p_tape > 0 && cfg.p_printer > 0) {
+        if (cfg.p_disk + cfg.p_tape + cfg.p_printer != 100) {
+            *error = 1;
+            return cfg;
+        }
+    }
+
+    if (cfg.disk_duration.min > cfg.disk_duration.max ||
+        cfg.tape_duration.min > cfg.tape_duration.max ||
+        cfg.printer_duration.min > cfg.printer_duration.max) {
+        *error = 1;
+        return cfg;
+    }
+
     return cfg;
 }
