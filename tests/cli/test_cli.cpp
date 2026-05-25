@@ -209,3 +209,49 @@ TEST(Duration, PrinterRange) {
     EXPECT_EQ(cfg.printer_duration.min, 1);
     EXPECT_EQ(cfg.printer_duration.max, 3);
 }
+
+// ---------------------------------------------------------------------------
+// IoMode — concurrent and queue per device
+// ---------------------------------------------------------------------------
+
+TEST(IoMode, DiskConcurrent) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--io-mode-disk=concurrent", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.io_mode_disk, IO_MODE_CONCURRENT);
+}
+
+TEST(IoMode, DiskQueue) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--io-mode-disk=queue", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.io_mode_disk, IO_MODE_QUEUE);
+}
+
+TEST(IoMode, TapeConcurrent) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--io-mode-tape=concurrent", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.io_mode_tape, IO_MODE_CONCURRENT);
+}
+
+TEST(IoMode, TapeQueue) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--io-mode-tape=queue", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.io_mode_tape, IO_MODE_QUEUE);
+}
+
+TEST(IoMode, PrinterConcurrent) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--io-mode-printer=concurrent", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.io_mode_printer, IO_MODE_CONCURRENT);
+}
+
+TEST(IoMode, PrinterQueue) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--io-mode-printer=queue", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(cfg.io_mode_printer, IO_MODE_QUEUE);
+}
