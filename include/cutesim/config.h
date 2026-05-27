@@ -9,6 +9,7 @@ typedef enum {
     IO_MODE_CONCURRENT,
     IO_MODE_QUEUE
 } IoMode;
+
 typedef enum {
     RUN_BATCH,
     RUN_STEPS,
