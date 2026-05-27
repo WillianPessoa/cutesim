@@ -47,3 +47,11 @@ Process *process_create(int pid, int arrival_tick, int creation_seq);
 
 /* Free the process and its io_script buffer. */
 void process_destroy(Process *p);
+
+/* Attempt to transition p to new_status.
+   Valid transitions:
+     READY   -> RUNNING
+     RUNNING -> READY | BLOCKED | DONE
+     BLOCKED -> READY
+   Returns 0 on success, -1 if the transition is not allowed. */
+int process_set_status(Process *p, ProcStatus new_status);
