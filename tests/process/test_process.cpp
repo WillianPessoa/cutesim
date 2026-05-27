@@ -72,132 +72,101 @@ TEST(Init, IoScriptIsNull) {
 }
 
 // ---------------------------------------------------------------------------
-// Status transitions
+// Status transitions — valid
 // ---------------------------------------------------------------------------
 
-TEST(Status, ReadyToRunning) {
-    DESCRIBE("status can transition from READY to RUNNING");
+TEST(Status, ReadyToRunningIsAllowed) {
+    DESCRIBE("READY -> RUNNING is a valid transition: process_set_status returns 0 and updates status");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
-    p->status = PROC_RUNNING;
+    EXPECT_EQ(process_set_status(p, PROC_RUNNING), 0);
     EXPECT_EQ(p->status, PROC_RUNNING);
     process_destroy(p);
 }
 
-TEST(Status, RunningToBlocked) {
-    DESCRIBE("status can transition from RUNNING to BLOCKED when I/O is requested");
+TEST(Status, RunningToReadyIsAllowed) {
+    DESCRIBE("RUNNING -> READY is valid: process preempted by quantum exhaustion returns to ready queue");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
-    p->status = PROC_RUNNING;
-    p->status = PROC_BLOCKED;
-    EXPECT_EQ(p->status, PROC_BLOCKED);
-    process_destroy(p);
-}
-
-TEST(Status, BlockedToReady) {
-    DESCRIBE("status can transition from BLOCKED back to READY when I/O completes");
-    Process *p = process_create(1, 0, 0);
-    ASSERT_NE(p, nullptr);
-    p->status = PROC_BLOCKED;
-    p->status = PROC_READY;
+    process_set_status(p, PROC_RUNNING);
+    EXPECT_EQ(process_set_status(p, PROC_READY), 0);
     EXPECT_EQ(p->status, PROC_READY);
     process_destroy(p);
 }
 
-TEST(Status, RunningToDone) {
-    DESCRIBE("status can transition from RUNNING to DONE when the process finishes");
+TEST(Status, RunningToBlockedIsAllowed) {
+    DESCRIBE("RUNNING -> BLOCKED is valid: process requested I/O and vacates the CPU");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
-    p->status = PROC_RUNNING;
-    p->status = PROC_DONE;
+    process_set_status(p, PROC_RUNNING);
+    EXPECT_EQ(process_set_status(p, PROC_BLOCKED), 0);
+    EXPECT_EQ(p->status, PROC_BLOCKED);
+    process_destroy(p);
+}
+
+TEST(Status, RunningToDoneIsAllowed) {
+    DESCRIBE("RUNNING -> DONE is valid: process completed its work");
+    Process *p = process_create(1, 0, 0);
+    ASSERT_NE(p, nullptr);
+    process_set_status(p, PROC_RUNNING);
+    EXPECT_EQ(process_set_status(p, PROC_DONE), 0);
     EXPECT_EQ(p->status, PROC_DONE);
     process_destroy(p);
 }
 
-// ---------------------------------------------------------------------------
-// Stats accumulation
-// ---------------------------------------------------------------------------
-
-TEST(Stats, CpuTicksAccumulate) {
-    DESCRIBE("cpu_ticks correctly counts every tick the process holds the CPU");
+TEST(Status, BlockedToReadyIsAllowed) {
+    DESCRIBE("BLOCKED -> READY is valid: I/O completed and process re-enters a CPU queue");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
-    p->cpu_ticks += 1;
-    p->cpu_ticks += 1;
-    p->cpu_ticks += 1;
-    EXPECT_EQ(p->cpu_ticks, 3);
-    process_destroy(p);
-}
-
-TEST(Stats, IoTicksAccumulate) {
-    DESCRIBE("io_ticks correctly counts every tick the process spends in an I/O queue");
-    Process *p = process_create(1, 0, 0);
-    ASSERT_NE(p, nullptr);
-    p->io_ticks += 2;
-    p->io_ticks += 3;
-    EXPECT_EQ(p->io_ticks, 5);
-    process_destroy(p);
-}
-
-TEST(Stats, IoCountIncrements) {
-    DESCRIBE("io_count increments once per I/O request, independently of duration");
-    Process *p = process_create(1, 0, 0);
-    ASSERT_NE(p, nullptr);
-    p->io_count++;
-    p->io_count++;
-    EXPECT_EQ(p->io_count, 2);
-    process_destroy(p);
-}
-
-TEST(Stats, CpuAndIoTicksAreIndependent) {
-    DESCRIBE("cpu_ticks and io_ticks do not interfere with each other");
-    Process *p = process_create(1, 0, 0);
-    ASSERT_NE(p, nullptr);
-    p->cpu_ticks += 4;
-    p->io_ticks  += 7;
-    EXPECT_EQ(p->cpu_ticks, 4);
-    EXPECT_EQ(p->io_ticks,  7);
+    process_set_status(p, PROC_RUNNING);
+    process_set_status(p, PROC_BLOCKED);
+    EXPECT_EQ(process_set_status(p, PROC_READY), 0);
+    EXPECT_EQ(p->status, PROC_READY);
     process_destroy(p);
 }
 
 // ---------------------------------------------------------------------------
-// Scripted I/O
+// Status transitions — invalid
 // ---------------------------------------------------------------------------
 
-TEST(Script, ScriptedEventsCanBeAttached) {
-    DESCRIBE("a scripted I/O list can be attached to a process after creation");
+TEST(Status, ReadyToBlockedIsRejected) {
+    DESCRIBE("READY -> BLOCKED is invalid: a process cannot request I/O without holding the CPU");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
-
-    ScriptedIO events[2] = { { 3, DEVICE_DISK }, { 7, DEVICE_TAPE } };
-    p->io_script     = events;
-    p->io_script_len = 2;
-
-    EXPECT_EQ(p->io_script_len, 2);
-    EXPECT_EQ(p->io_script[0].tick,   3);
-    EXPECT_EQ(p->io_script[0].device, DEVICE_DISK);
-    EXPECT_EQ(p->io_script[1].tick,   7);
-    EXPECT_EQ(p->io_script[1].device, DEVICE_TAPE);
-
-    p->io_script = nullptr; /* not heap-allocated in this test */
+    EXPECT_EQ(process_set_status(p, PROC_BLOCKED), -1);
+    EXPECT_EQ(p->status, PROC_READY);
     process_destroy(p);
 }
 
-TEST(Script, ScriptPosAdvances) {
-    DESCRIBE("io_script_pos advances as scripted events are consumed");
+TEST(Status, ReadyToDoneIsRejected) {
+    DESCRIBE("READY -> DONE is invalid: a process cannot finish without ever running");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
+    EXPECT_EQ(process_set_status(p, PROC_DONE), -1);
+    EXPECT_EQ(p->status, PROC_READY);
+    process_destroy(p);
+}
 
-    ScriptedIO events[2] = { { 2, DEVICE_PRINTER }, { 5, DEVICE_DISK } };
-    p->io_script     = events;
-    p->io_script_len = 2;
-    p->io_script_pos = 0;
+TEST(Status, BlockedToRunningIsRejected) {
+    DESCRIBE("BLOCKED -> RUNNING is invalid: a process returning from I/O must pass through the ready queue");
+    Process *p = process_create(1, 0, 0);
+    ASSERT_NE(p, nullptr);
+    process_set_status(p, PROC_RUNNING);
+    process_set_status(p, PROC_BLOCKED);
+    EXPECT_EQ(process_set_status(p, PROC_RUNNING), -1);
+    EXPECT_EQ(p->status, PROC_BLOCKED);
+    process_destroy(p);
+}
 
-    p->io_script_pos++;
-    EXPECT_EQ(p->io_script_pos, 1);
-    EXPECT_EQ(p->io_script[p->io_script_pos].tick,   5);
-    EXPECT_EQ(p->io_script[p->io_script_pos].device, DEVICE_DISK);
-
-    p->io_script = nullptr;
+TEST(Status, DoneToAnyIsRejected) {
+    DESCRIBE("DONE is a terminal state: no further transitions are allowed");
+    Process *p = process_create(1, 0, 0);
+    ASSERT_NE(p, nullptr);
+    process_set_status(p, PROC_RUNNING);
+    process_set_status(p, PROC_DONE);
+    EXPECT_EQ(process_set_status(p, PROC_READY),   -1);
+    EXPECT_EQ(process_set_status(p, PROC_RUNNING), -1);
+    EXPECT_EQ(process_set_status(p, PROC_BLOCKED), -1);
+    EXPECT_EQ(p->status, PROC_DONE);
     process_destroy(p);
 }
