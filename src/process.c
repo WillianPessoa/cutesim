@@ -23,3 +23,25 @@ void process_destroy(Process *p) {
     free(p->io_script);
     free(p);
 }
+
+int process_set_status(Process *p, ProcStatus new_status) {
+    switch (p->status) {
+    case PROC_READY:
+        if (new_status == PROC_RUNNING) break;
+        return -1;
+    case PROC_RUNNING:
+        if (new_status == PROC_READY   ||
+            new_status == PROC_BLOCKED ||
+            new_status == PROC_DONE)    break;
+        return -1;
+    case PROC_BLOCKED:
+        if (new_status == PROC_READY) break;
+        return -1;
+    case PROC_DONE:
+        return -1;
+    default:
+        return -1;
+    }
+    p->status = new_status;
+    return 0;
+}
