@@ -6,12 +6,16 @@ extern "C" {
 
 #include "../test_describe.h"
 
+static const int QUANTUM_HI = 3;
+static const int QUANTUM_LO = 6;
+static const int RNG_SEED   = 42;
+
 /* Minimal config for deterministic tests: no random arrivals, no I/O. */
 static SimConfig test_config(void) {
     SimConfig cfg    = {};
-    cfg.quantum_hi   = 3;
-    cfg.quantum_lo   = 6;
-    cfg.seed         = 42;
+    cfg.quantum_hi   = QUANTUM_HI;
+    cfg.quantum_lo   = QUANTUM_LO;
+    cfg.seed         = RNG_SEED;
     cfg.p_io         = 0;  /* no random I/O      */
     cfg.arrival_rate = 0;  /* no random arrivals */
     return cfg;
@@ -110,26 +114,26 @@ TEST(Scheduling, TieBreakingByCreationSeq) {
 TEST(RoundRobin, ProcessRunsForQuantumHiTicks) {
     DESCRIBE("a process on the high-priority queue runs for exactly quantum_hi ticks before preemption");
     SimConfig cfg  = test_config();
-    cfg.quantum_hi = 3;
+    cfg.quantum_hi = QUANTUM_HI;
     Simulation *s  = sim_create(cfg);
     Process    *p  = process_create(1, 0, 0);
     sim_add_process(s, p);
 
-    sim_run(s, 3);
+    sim_run(s, QUANTUM_HI);
 
-    EXPECT_EQ(p->cpu_ticks, 3);
+    EXPECT_EQ(p->cpu_ticks, QUANTUM_HI);
     sim_destroy(s);
 }
 
 TEST(RoundRobin, PreemptedProcessMovesToLoQueue) {
     DESCRIBE("after exhausting quantum_hi the process is moved to lo_queue");
     SimConfig cfg  = test_config();
-    cfg.quantum_hi = 3;
+    cfg.quantum_hi = QUANTUM_HI;
     Simulation *s  = sim_create(cfg);
     Process    *p  = process_create(1, 0, 0);
     sim_add_process(s, p);
 
-    sim_run(s, 3);
+    sim_run(s, QUANTUM_HI);
 
     EXPECT_EQ(s->running, nullptr);
     EXPECT_EQ(queue_size(&s->lo_queue), 1);
@@ -140,32 +144,32 @@ TEST(RoundRobin, PreemptedProcessMovesToLoQueue) {
 TEST(RoundRobin, PreemptedProcessGetsLowPriority) {
     DESCRIBE("after preemption the process priority field is updated to low (1)");
     SimConfig cfg  = test_config();
-    cfg.quantum_hi = 3;
+    cfg.quantum_hi = QUANTUM_HI;
     Simulation *s  = sim_create(cfg);
     Process    *p  = process_create(1, 0, 0);
     sim_add_process(s, p);
 
-    sim_run(s, 3);
+    sim_run(s, QUANTUM_HI);
 
-    EXPECT_EQ(p->priority, 1);
+    EXPECT_EQ(p->priority, PRIORITY_LOW);
     sim_destroy(s);
 }
 
 TEST(RoundRobin, LoQueueProcessRunsForQuantumLoTicks) {
     DESCRIBE("a process re-scheduled from lo_queue runs for quantum_lo ticks");
     SimConfig cfg  = test_config();
-    cfg.quantum_hi = 3;
-    cfg.quantum_lo = 6;
+    cfg.quantum_hi = QUANTUM_HI;
+    cfg.quantum_lo = QUANTUM_LO;
     Simulation *s  = sim_create(cfg);
     Process    *p  = process_create(1, 0, 0);
     sim_add_process(s, p);
 
-    sim_run(s, 3); /* quantum_hi exhausted → lo_queue */
+    sim_run(s, QUANTUM_HI); /* quantum_hi exhausted → lo_queue */
     int cpu_after_hi = p->cpu_ticks;
 
-    sim_run(s, 6); /* re-scheduled from lo_queue, runs quantum_lo ticks */
+    sim_run(s, QUANTUM_LO); /* re-scheduled from lo_queue, runs quantum_lo ticks */
 
-    EXPECT_EQ(p->cpu_ticks, cpu_after_hi + 6);
+    EXPECT_EQ(p->cpu_ticks, cpu_after_hi + QUANTUM_LO);
     EXPECT_EQ(queue_size(&s->lo_queue), 1); /* preempted again */
     sim_destroy(s);
 }

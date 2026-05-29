@@ -6,11 +6,17 @@ extern "C" {
 
 #include "../test_describe.h"
 
+/* Quanta large enough that I/O fires before the process is preempted. */
+static const int LARGE_QUANTUM_HI = 10;
+static const int LARGE_QUANTUM_LO = 20;
+static const int RNG_SEED         = 42;
+static const int IO_FIRES_AT_TICK = 1;
+
 static SimConfig test_config(void) {
     SimConfig cfg    = {};
-    cfg.quantum_hi   = 10; /* large quantum so I/O fires before preemption */
-    cfg.quantum_lo   = 20;
-    cfg.seed         = 42;
+    cfg.quantum_hi   = LARGE_QUANTUM_HI;
+    cfg.quantum_lo   = LARGE_QUANTUM_LO;
+    cfg.seed         = RNG_SEED;
     cfg.p_io         = 0;
     cfg.arrival_rate = 0;
     return cfg;
@@ -22,17 +28,18 @@ static SimConfig test_config(void) {
 
 TEST(IoTrigger, ScriptedIoMovesProcessToDeviceQueue) {
     DESCRIBE("a process with a scripted disk I/O at tick 1 enters disk_queue on that tick");
+    static const int DISK_DURATION = 3;
     SimConfig cfg         = test_config();
-    cfg.disk_duration     = { 3, 3 };
+    cfg.disk_duration     = { DISK_DURATION, DISK_DURATION };
     Simulation *s         = sim_create(cfg);
 
     Process    *p         = process_create(1, 0, 0);
-    ScriptedIO  ev        = { 1, DEVICE_DISK };
+    ScriptedIO  ev        = { IO_FIRES_AT_TICK, DEVICE_DISK };
     p->io_script          = &ev;
     p->io_script_len      = 1;
 
     sim_add_process(s, p);
-    sim_run(s, 2); /* tick 0: runs; tick 1: I/O fires */
+    sim_run(s, IO_FIRES_AT_TICK + 1); /* tick 0: runs; tick 1: I/O fires */
 
     EXPECT_EQ(queue_size(&s->disk_queue), 1);
     EXPECT_EQ(s->running,                 nullptr);
@@ -44,19 +51,20 @@ TEST(IoTrigger, ScriptedIoMovesProcessToDeviceQueue) {
 
 TEST(IoTrigger, IoRemainingSetOnTrigger) {
     DESCRIBE("io_remaining is set to the device duration when I/O fires");
+    static const int DISK_DURATION = 5;
     SimConfig cfg     = test_config();
-    cfg.disk_duration = { 5, 5 };
+    cfg.disk_duration = { DISK_DURATION, DISK_DURATION };
     Simulation *s     = sim_create(cfg);
 
     Process    *p     = process_create(1, 0, 0);
-    ScriptedIO  ev    = { 1, DEVICE_DISK };
+    ScriptedIO  ev    = { IO_FIRES_AT_TICK, DEVICE_DISK };
     p->io_script      = &ev;
     p->io_script_len  = 1;
 
     sim_add_process(s, p);
-    sim_run(s, 2);
+    sim_run(s, IO_FIRES_AT_TICK + 1);
 
-    EXPECT_EQ(p->io_remaining, 5);
+    EXPECT_EQ(p->io_remaining, DISK_DURATION);
 
     p->io_script = nullptr;
     sim_destroy(s);
@@ -68,8 +76,9 @@ TEST(IoTrigger, IoRemainingSetOnTrigger) {
 
 TEST(ConcurrentIo, BothProcessesDecrementEachTick) {
     DESCRIBE("in CONCURRENT mode every process in the device queue decrements io_remaining each tick");
+    static const int DISK_DURATION = 3;
     SimConfig cfg     = test_config();
-    cfg.disk_duration = { 3, 3 };
+    cfg.disk_duration = { DISK_DURATION, DISK_DURATION };
     cfg.io_mode_disk  = IO_MODE_CONCURRENT;
     Simulation *s     = sim_create(cfg);
 
@@ -78,8 +87,8 @@ TEST(ConcurrentIo, BothProcessesDecrementEachTick) {
     Process *p2 = process_create(2, 0, 1);
     process_set_status(p1, PROC_BLOCKED);
     process_set_status(p2, PROC_BLOCKED);
-    p1->io_remaining = 3;
-    p2->io_remaining = 3;
+    p1->io_remaining = DISK_DURATION;
+    p2->io_remaining = DISK_DURATION;
     queue_enqueue(&s->disk_queue, p1);
     queue_enqueue(&s->disk_queue, p2);
     /* Register so sim_destroy frees them */
@@ -90,16 +99,17 @@ TEST(ConcurrentIo, BothProcessesDecrementEachTick) {
 
     sim_step(s); /* one tick: both should decrement */
 
-    EXPECT_EQ(p1->io_remaining, 2);
-    EXPECT_EQ(p2->io_remaining, 2);
+    EXPECT_EQ(p1->io_remaining, DISK_DURATION - 1);
+    EXPECT_EQ(p2->io_remaining, DISK_DURATION - 1);
 
     sim_destroy(s);
 }
 
 TEST(ConcurrentIo, BothProcessesCompleteAtSameTick) {
     DESCRIBE("in CONCURRENT mode two processes with the same duration complete simultaneously");
+    static const int DISK_DURATION = 2;
     SimConfig cfg     = test_config();
-    cfg.disk_duration = { 2, 2 };
+    cfg.disk_duration = { DISK_DURATION, DISK_DURATION };
     cfg.io_mode_disk  = IO_MODE_CONCURRENT;
     Simulation *s     = sim_create(cfg);
 
@@ -107,15 +117,15 @@ TEST(ConcurrentIo, BothProcessesCompleteAtSameTick) {
     Process *p2 = process_create(2, 0, 1);
     process_set_status(p1, PROC_BLOCKED);
     process_set_status(p2, PROC_BLOCKED);
-    p1->io_remaining = 2;
-    p2->io_remaining = 2;
+    p1->io_remaining = DISK_DURATION;
+    p2->io_remaining = DISK_DURATION;
     queue_enqueue(&s->disk_queue, p1);
     queue_enqueue(&s->disk_queue, p2);
     sim_add_process(s, p1);
     sim_add_process(s, p2);
     s->pending_count = 0;
 
-    sim_run(s, 2); /* after 2 ticks both should have completed */
+    sim_run(s, DISK_DURATION); /* after DISK_DURATION ticks both should have completed */
 
     EXPECT_EQ(queue_size(&s->disk_queue), 0);
     /* both return to lo_queue (disk → lo) */
@@ -130,8 +140,9 @@ TEST(ConcurrentIo, BothProcessesCompleteAtSameTick) {
 
 TEST(QueueIo, OnlyHeadDecrementsEachTick) {
     DESCRIBE("in QUEUE mode only the head of the device queue has io_remaining decremented");
+    static const int DISK_DURATION = 3;
     SimConfig cfg     = test_config();
-    cfg.disk_duration = { 3, 3 };
+    cfg.disk_duration = { DISK_DURATION, DISK_DURATION };
     cfg.io_mode_disk  = IO_MODE_QUEUE;
     Simulation *s     = sim_create(cfg);
 
@@ -139,8 +150,8 @@ TEST(QueueIo, OnlyHeadDecrementsEachTick) {
     Process *p2 = process_create(2, 0, 1);
     process_set_status(p1, PROC_BLOCKED);
     process_set_status(p2, PROC_BLOCKED);
-    p1->io_remaining = 3;
-    p2->io_remaining = 3;
+    p1->io_remaining = DISK_DURATION;
+    p2->io_remaining = DISK_DURATION;
     queue_enqueue(&s->disk_queue, p1); /* p1 is head */
     queue_enqueue(&s->disk_queue, p2);
     sim_add_process(s, p1);
@@ -149,16 +160,17 @@ TEST(QueueIo, OnlyHeadDecrementsEachTick) {
 
     sim_step(s);
 
-    EXPECT_EQ(p1->io_remaining, 2); /* head decremented */
-    EXPECT_EQ(p2->io_remaining, 3); /* second process unchanged */
+    EXPECT_EQ(p1->io_remaining, DISK_DURATION - 1); /* head decremented */
+    EXPECT_EQ(p2->io_remaining, DISK_DURATION);      /* second process unchanged */
 
     sim_destroy(s);
 }
 
 TEST(QueueIo, SecondProcessDelayedBehindFirst) {
     DESCRIBE("in QUEUE mode the second process starts decrementing only after the first completes");
+    static const int DISK_DURATION = 2;
     SimConfig cfg     = test_config();
-    cfg.disk_duration = { 2, 2 };
+    cfg.disk_duration = { DISK_DURATION, DISK_DURATION };
     cfg.io_mode_disk  = IO_MODE_QUEUE;
     Simulation *s     = sim_create(cfg);
 
@@ -166,20 +178,20 @@ TEST(QueueIo, SecondProcessDelayedBehindFirst) {
     Process *p2 = process_create(2, 0, 1);
     process_set_status(p1, PROC_BLOCKED);
     process_set_status(p2, PROC_BLOCKED);
-    p1->io_remaining = 2;
-    p2->io_remaining = 2;
+    p1->io_remaining = DISK_DURATION;
+    p2->io_remaining = DISK_DURATION;
     queue_enqueue(&s->disk_queue, p1);
     queue_enqueue(&s->disk_queue, p2);
     sim_add_process(s, p1);
     sim_add_process(s, p2);
     s->pending_count = 0;
 
-    sim_run(s, 2); /* p1 completes after 2 ticks; p2 hasn't started */
+    sim_run(s, DISK_DURATION); /* p1 completes; p2 hasn't started */
 
     EXPECT_EQ(queue_size(&s->disk_queue), 1); /* only p2 remains */
-    EXPECT_EQ(p2->io_remaining, 2);            /* p2 not yet decremented */
+    EXPECT_EQ(p2->io_remaining, DISK_DURATION); /* p2 not yet decremented */
 
-    sim_run(s, 2); /* now p2 runs its 2 ticks */
+    sim_run(s, DISK_DURATION); /* now p2 runs its ticks */
     EXPECT_EQ(queue_size(&s->disk_queue), 0);
 
     sim_destroy(s);

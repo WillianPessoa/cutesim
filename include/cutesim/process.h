@@ -1,5 +1,7 @@
 #pragma once
 
+enum { PRIORITY_HIGH = 0, PRIORITY_LOW = 1 };
+
 typedef enum {
     PROC_READY,
     PROC_RUNNING,
@@ -28,6 +30,8 @@ typedef struct {
     int arrival_tick;
     int first_cpu_tick;   /* -1 until first scheduled */
     int completion_tick;  /* -1 until done            */
+
+    int cpu_burst_total;   /* total CPU ticks until PROC_DONE; 0 = no limit */
 
     int cpu_ticks;
     int io_ticks;
