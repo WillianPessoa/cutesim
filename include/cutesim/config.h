@@ -17,10 +17,11 @@ typedef enum {
 } RunMode;
 
 typedef struct {
-    int quantum_hi;    /* default: 3  */
-    int quantum_lo;    /* default: 6  */
-    int process_count; /* total processes to generate */
-    int arrival_rate;  /* % per tick; 0 = all arrive at tick 0 */
+    int quantum_hi;       /* default: 3  */
+    int quantum_lo;       /* default: 6  */
+    int process_count;    /* total processes to generate */
+    int arrival_rate;     /* % per tick; 0 = all arrive at tick 0 */
+    Duration service_duration; /* CPU burst length per process; {0,0} = no limit */
     int p_io;          /* % chance of I/O per tick (e.g. 20) */
     int p_disk;        /* conditional %; 0 = equal share */
     int p_tape;
