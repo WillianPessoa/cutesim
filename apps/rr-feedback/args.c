@@ -4,11 +4,13 @@
 #include <stdlib.h>
 
 static SimConfig default_config(void) {
-    SimConfig cfg  = { 0 };
-    cfg.quantum_hi = 3;
-    cfg.quantum_lo = 6;
-    cfg.seed       = 42;
-    cfg.run_mode   = RUN_BATCH;
+    SimConfig cfg          = { 0 };
+    cfg.quantum_hi         = 3;
+    cfg.quantum_lo         = 6;
+    cfg.seed               = 42;
+    cfg.run_mode           = RUN_BATCH;
+    cfg.process_count      = 5;
+    cfg.service_duration   = (Duration){ 5, 15 };
     return cfg;
 }
 
@@ -23,6 +25,7 @@ static struct option long_opts[] = { { "quantum-hi", required_argument, 0, 'H' }
                                      { "disk-duration", required_argument, 0, 1 },
                                      { "tape-duration", required_argument, 0, 2 },
                                      { "printer-duration", required_argument, 0, 3 },
+                                     { "service-duration", required_argument, 0, 7 },
                                      { "io-mode-disk", required_argument, 0, 4 },
                                      { "io-mode-tape", required_argument, 0, 5 },
                                      { "io-mode-printer", required_argument, 0, 6 },
@@ -122,6 +125,9 @@ SimConfig parse_args(int argc, char **argv, int *error) {
             break;
         case 3:
             cfg.printer_duration = parse_duration(optarg);
+            break;
+        case 7:
+            cfg.service_duration = parse_duration(optarg);
             break;
         case 4:
             cfg.io_mode_disk = parse_io_mode(optarg);
