@@ -76,7 +76,10 @@ static Queue *return_queue(Simulation *s, DeviceType dev) {
  * Pending arrivals — dynamic array sorted by arrival_tick
  * ---------------------------------------------------------------------- */
 
-#define INITIAL_CAP 8
+#define INITIAL_CAP       8
+/* Maximum number of processes that can arrive or complete I/O in a single
+   tick.  Exceeding this silently drops events — raise if needed. */
+#define MAX_PROCESS_BATCH 64
 
 static int ensure_cap(void ***arr, int *count, int *cap) {
     if (*count < *cap) return 0;
@@ -148,7 +151,7 @@ void sim_step(Simulation *s) {
     DeviceType  dev_types[3]  = { DEVICE_DISK, DEVICE_TAPE, DEVICE_PRINTER };
 
     /* 1. Process arrivals for this tick — collect, sort by creation_seq, enqueue */
-    Process *arrived[64];
+    Process *arrived[MAX_PROCESS_BATCH];
     int      n_arrived = 0;
 
     for (int i = 0; i < s->pending_count; ) {
@@ -214,7 +217,7 @@ void sim_step(Simulation *s) {
         Queue     *q   = dev_queues[d];
         DeviceType dev = dev_types[d];
 
-        Process *finished[64];
+        Process *finished[MAX_PROCESS_BATCH];
         int      n_finished = 0;
         QueueNode *node = q->head;
         while (node) {
@@ -245,10 +248,10 @@ void sim_step(Simulation *s) {
 
     /* 5. Tick running process ------------------------------------------- */
     if (s->running) {
-        Process *p   = s->running;
+        Process *p        = s->running;
         int      fired_io = 0;
 
-        /* 3a. Check scripted I/O */
+        /* 5a. Check scripted I/O (fires before the CPU tick) */
         if (p->io_script && p->io_script_pos < p->io_script_len &&
             p->io_script[p->io_script_pos].tick == s->tick) {
             DeviceType dev = p->io_script[p->io_script_pos].device;
@@ -261,7 +264,7 @@ void sim_step(Simulation *s) {
             fired_io   = 1;
         }
 
-        /* 3b. Check random I/O */
+        /* 5b. Check random I/O (fires before the CPU tick) */
         if (!fired_io && rng_roll(&s->rng_state, s->cfg.p_io)) {
             DeviceType dev  = select_device(s->cfg, &s->rng_state);
             p->io_remaining = sample_duration(device_duration(s->cfg, dev), &s->rng_state);
@@ -272,18 +275,27 @@ void sim_step(Simulation *s) {
             fired_io   = 1;
         }
 
-        /* 3c. Process runs this tick */
+        /* 5c. CPU tick runs only when no I/O fired this step */
         if (!fired_io) {
             p->cpu_ticks++;
             s->quantum_used++;
 
-            int quantum = (p->priority == 0) ? s->cfg.quantum_hi : s->cfg.quantum_lo;
-            if (s->quantum_used >= quantum) {
-                process_set_status(p, PROC_READY);
-                p->priority = 1; /* demote to low priority */
-                queue_enqueue(&s->lo_queue, p);
+            if (p->cpu_burst_total > 0 && p->cpu_ticks >= p->cpu_burst_total) {
+                p->completion_tick = s->tick;
+                process_set_status(p, PROC_DONE);
                 s->running      = NULL;
                 s->quantum_used = 0;
+            } else {
+                int quantum = (p->priority == PRIORITY_HIGH)
+                              ? s->cfg.quantum_hi
+                              : s->cfg.quantum_lo;
+                if (s->quantum_used >= quantum) {
+                    process_set_status(p, PROC_READY);
+                    p->priority = PRIORITY_LOW;
+                    queue_enqueue(&s->lo_queue, p);
+                    s->running      = NULL;
+                    s->quantum_used = 0;
+                }
             }
         }
     }
