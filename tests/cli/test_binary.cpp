@@ -45,16 +45,17 @@ TEST(Binary, UnknownFlagExitsNonZero) {
     EXPECT_NE(exit_code, 0);
 }
 
-// --- Summary output ---
+// --- Header output ---
 
-TEST(Binary, DefaultRunShowsSummary) {
+TEST(Binary, DefaultRunShowsHeader) {
     std::string out = run("");
-    EXPECT_NE(out.find("quantum-hi=3"), std::string::npos);
-    EXPECT_NE(out.find("quantum-lo=6"), std::string::npos);
-    EXPECT_NE(out.find("seed=42"),      std::string::npos);
+    EXPECT_NE(out.find("alta prioridade"),  std::string::npos);
+    EXPECT_NE(out.find("baixa prioridade"), std::string::npos);
+    EXPECT_NE(out.find("42"),               std::string::npos); /* seed */
+    EXPECT_NE(out.find("CONCLU"),           std::string::npos); /* CONCLUÍDA or CONCLUÍDOS */
 }
 
-TEST(Binary, QuantumHiFlagAppearsInSummary) {
+TEST(Binary, QuantumHiFlagAppearsInHeader) {
     std::string out = run("--quantum-hi=7");
-    EXPECT_NE(out.find("quantum-hi=7"), std::string::npos);
+    EXPECT_NE(out.find("alta prioridade  : 7"), std::string::npos);
 }
