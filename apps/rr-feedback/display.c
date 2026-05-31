@@ -2,6 +2,9 @@
 
 #include <stdio.h>
 
+#include "cutesim/process.h"
+#include "cutesim/queue.h"
+
 static const char *io_mode_str(IoMode mode) {
     return mode == IO_MODE_CONCURRENT ? "concurrent" : "queue";
 }
@@ -77,6 +80,128 @@ void print_help(void) {
 
     printf("Other\n");
     printf("  -h / --help             show this help\n");
+}
+
+/* -------------------------------------------------------------------------
+ * Helpers for trace output
+ * ---------------------------------------------------------------------- */
+
+static const char *SEP = "─────────────────────────────────────────────────────────\n";
+
+static void print_cpu_queue(const Queue *q) {
+    if (q->size == 0) { printf("[vazia]"); return; }
+    const QueueNode *node = q->head;
+    while (node) {
+        const Process *p = (const Process *)node->data;
+        printf("PID=%-2d  ", p->pid);
+        node = node->next;
+    }
+}
+
+static void print_io_queue(const Queue *q) {
+    if (q->size == 0) { printf("[vazia]"); return; }
+    const QueueNode *node = q->head;
+    while (node) {
+        const Process *p = (const Process *)node->data;
+        printf("PID=%-2d(faltam %-2d)  ", p->pid, p->io_remaining);
+        node = node->next;
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * Public API — styled Portuguese output
+ * ---------------------------------------------------------------------- */
+
+void print_header(SimConfig cfg) {
+    printf("=========================================================\n");
+    printf("  Simulador de Escalonamento — Round Robin com Feedback  \n");
+    printf("  ICP246 — UFRJ — 2025-1                                 \n");
+    printf("=========================================================\n");
+    printf("  Modo                     : %s\n", run_mode_str(cfg.run_mode));
+    printf("  Processos a criar        : %d\n", cfg.process_count);
+    printf("---------------------------------------------------------\n");
+    printf("  Quantum alta prioridade  : %d ticks\n", cfg.quantum_hi);
+    printf("  Quantum baixa prioridade : %d ticks\n", cfg.quantum_lo);
+    if (cfg.service_duration.min > 0)
+        printf("  Serviço                  : [%d, %d] ticks\n",
+               cfg.service_duration.min, cfg.service_duration.max);
+    printf("  Probabilidade de I/O     : %d%%\n", cfg.p_io);
+    printf("  I/O disco                : [%d, %d] ticks  (%s)\n",
+           cfg.disk_duration.min, cfg.disk_duration.max,
+           io_mode_str(cfg.io_mode_disk));
+    printf("  I/O fita                 : [%d, %d] ticks  (%s)\n",
+           cfg.tape_duration.min, cfg.tape_duration.max,
+           io_mode_str(cfg.io_mode_tape));
+    printf("  I/O impressora           : [%d, %d] ticks  (%s)\n",
+           cfg.printer_duration.min, cfg.printer_duration.max,
+           io_mode_str(cfg.io_mode_printer));
+    printf("  Semente RNG              : %u\n", cfg.seed);
+    printf("=========================================================\n");
+}
+
+void print_tick_trace(const Simulation *s) {
+    int tick = s->tick - 1; /* tick that just ran */
+
+    printf("\n%s", SEP);
+    printf("  TICK %d\n", tick);
+    printf("%s", SEP);
+
+    /* CPU */
+    printf("  CPU           : ");
+    if (s->running) {
+        const Process *p       = s->running;
+        int quantum_max        = (p->priority == PRIORITY_HIGH)
+                                 ? s->cfg.quantum_hi : s->cfg.quantum_lo;
+        const char *fila_nome  = (p->priority == PRIORITY_HIGH) ? "ALTA" : "BAIXA";
+        if (p->cpu_burst_total > 0) {
+            int restante = p->cpu_burst_total - p->cpu_ticks;
+            printf("PID=%-2d  restante=%-3d  quantum=%d/%d  fila=%s\n",
+                   p->pid, restante, s->quantum_used, quantum_max, fila_nome);
+        } else {
+            printf("PID=%-2d  quantum=%d/%d  fila=%s\n",
+                   p->pid, s->quantum_used, quantum_max, fila_nome);
+        }
+    } else {
+        printf("[ocioso]\n");
+    }
+
+    printf("\n");
+    printf("  FILA ALTA     : "); print_cpu_queue(&s->hi_queue);    printf("\n");
+    printf("  FILA BAIXA    : "); print_cpu_queue(&s->lo_queue);    printf("\n");
+    printf("\n");
+    printf("  I/O DISCO     : "); print_io_queue(&s->disk_queue);   printf("\n");
+    printf("  I/O FITA      : "); print_io_queue(&s->tape_queue);   printf("\n");
+    printf("  I/O IMPRESSORA: "); print_io_queue(&s->printer_queue);printf("\n");
+    printf("\n");
+
+    /* Completed processes */
+    printf("  CONCLUÍDOS    : ");
+    int any_done = 0;
+    for (int i = 0; i < s->all_count; i++) {
+        if (s->all_processes[i]->status == PROC_DONE) {
+            printf("PID=%-2d  ", s->all_processes[i]->pid);
+            any_done = 1;
+        }
+    }
+    if (!any_done) printf("nenhum");
+    printf("\n");
+}
+
+void print_sim_done(const Simulation *s) {
+    printf("\n%s", SEP);
+    if (sim_is_done(s)) {
+        printf("  SIMULAÇÃO CONCLUÍDA — tick %d\n", s->tick);
+    } else {
+        printf("  SIMULAÇÃO PAUSADA   — tick %d\n", s->tick);
+    }
+    printf("%s", SEP);
+
+    int done = 0;
+    for (int i = 0; i < s->all_count; i++) {
+        if (s->all_processes[i]->status == PROC_DONE) done++;
+    }
+    printf("  Processos concluídos : %d de %d\n", done, s->all_count);
+    printf("%s\n", SEP);
 }
 
 void print_sim_summary(SimConfig cfg) {
