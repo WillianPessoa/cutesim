@@ -93,7 +93,12 @@ static void print_cpu_queue(const Queue *q) {
     const QueueNode *node = q->head;
     while (node) {
         const Process *p = (const Process *)node->data;
-        printf("PID=%-2d  ", p->pid);
+        if (p->cpu_burst_total > 0) {
+            int restante = p->cpu_burst_total - p->cpu_ticks;
+            printf("PID=%-2d(rest=%-3d)  ", p->pid, restante);
+        } else {
+            printf("PID=%-2d             ", p->pid);
+        }
         node = node->next;
     }
 }
@@ -160,6 +165,18 @@ void print_tick_trace(const Simulation *s) {
         } else {
             printf("PID=%-2d  quantum=%d/%d  fila=%s\n",
                    p->pid, s->quantum_used, quantum_max, fila_nome);
+        }
+    } else if (s->last_preempted) {
+        /* Show the quantum=N/N moment that caused preemption */
+        const Process *p      = s->last_preempted;
+        const char *fila_nome = (s->last_preempted_priority == PRIORITY_HIGH) ? "ALTA" : "BAIXA";
+        if (p->cpu_burst_total > 0) {
+            int restante = p->cpu_burst_total - p->cpu_ticks;
+            printf("PID=%-2d  restante=%-3d  quantum=%d/%d  fila=%s  [preemptado]\n",
+                   p->pid, restante, s->last_quantum_used, s->last_quantum_max, fila_nome);
+        } else {
+            printf("PID=%-2d  quantum=%d/%d  fila=%s  [preemptado]\n",
+                   p->pid, s->last_quantum_used, s->last_quantum_max, fila_nome);
         }
     } else {
         printf("[ocioso]\n");
