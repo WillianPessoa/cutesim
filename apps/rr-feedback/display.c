@@ -88,19 +88,26 @@ void print_help(void) {
 
 static const char *SEP = "─────────────────────────────────────────────────────────\n";
 
-static void print_cpu_queue(const Queue *q) {
-    if (q->size == 0) { printf("[vazia]"); return; }
+/* skip: if non-NULL, that process is omitted from the listing.
+   Used to hide a just-preempted process from lo_queue on the same tick
+   it was preempted — it appears in the CPU line instead. */
+static void print_cpu_queue(const Queue *q, const Process *skip) {
+    int printed = 0;
     const QueueNode *node = q->head;
     while (node) {
         const Process *p = (const Process *)node->data;
-        if (p->cpu_burst_total > 0) {
-            int restante = p->cpu_burst_total - p->cpu_ticks;
-            printf("PID=%-2d(rest=%-3d)  ", p->pid, restante);
-        } else {
-            printf("PID=%-2d             ", p->pid);
+        if (p != skip) {
+            if (p->cpu_burst_total > 0) {
+                int restante = p->cpu_burst_total - p->cpu_ticks;
+                printf("PID=%-2d(rest=%-3d)  ", p->pid, restante);
+            } else {
+                printf("PID=%-2d             ", p->pid);
+            }
+            printed++;
         }
         node = node->next;
     }
+    if (!printed) printf("[vazia]");
 }
 
 static void print_io_queue(const Queue *q) {
@@ -183,8 +190,8 @@ void print_tick_trace(const Simulation *s) {
     }
 
     printf("\n");
-    printf("  FILA ALTA     : "); print_cpu_queue(&s->hi_queue);    printf("\n");
-    printf("  FILA BAIXA    : "); print_cpu_queue(&s->lo_queue);    printf("\n");
+    printf("  FILA ALTA     : "); print_cpu_queue(&s->hi_queue, NULL);               printf("\n");
+    printf("  FILA BAIXA    : "); print_cpu_queue(&s->lo_queue, s->last_preempted); printf("\n");
     printf("\n");
     printf("  I/O DISCO     : "); print_io_queue(&s->disk_queue);   printf("\n");
     printf("  I/O FITA      : "); print_io_queue(&s->tape_queue);   printf("\n");
