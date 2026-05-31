@@ -16,6 +16,13 @@ typedef struct {
     int       quantum_used;  /* ticks consumed in current quantum */
     SimConfig cfg;
 
+    /* Set when a preemption occurs during a tick; cleared at the start of the
+       next tick.  Allows the display to show the quantum=N/N moment. */
+    Process  *last_preempted;
+    int       last_quantum_used;     /* quantum_used at the moment of preemption */
+    int       last_quantum_max;      /* quantum limit that was reached            */
+    int       last_preempted_priority; /* priority BEFORE demotion to PRIORITY_LOW */
+
     /* --- internal --- */
     Process **pending;       /* processes waiting to arrive */
     int       pending_count;

@@ -150,6 +150,9 @@ void sim_step(Simulation *s) {
     Queue      *dev_queues[3] = { &s->disk_queue, &s->tape_queue, &s->printer_queue };
     DeviceType  dev_types[3]  = { DEVICE_DISK, DEVICE_TAPE, DEVICE_PRINTER };
 
+    /* Clear per-tick preemption event */
+    s->last_preempted = NULL;
+
     /* 1. Process arrivals for this tick — collect, sort by creation_seq, enqueue */
     Process *arrived[MAX_PROCESS_BATCH];
     int      n_arrived = 0;
@@ -290,6 +293,11 @@ void sim_step(Simulation *s) {
                               ? s->cfg.quantum_hi
                               : s->cfg.quantum_lo;
                 if (s->quantum_used >= quantum) {
+                    /* Record for display before clearing state */
+                    s->last_preempted          = p;
+                    s->last_quantum_used       = s->quantum_used;
+                    s->last_quantum_max        = quantum;
+                    s->last_preempted_priority = p->priority;
                     process_set_status(p, PROC_READY);
                     p->priority = PRIORITY_LOW;
                     queue_enqueue(&s->lo_queue, p);
