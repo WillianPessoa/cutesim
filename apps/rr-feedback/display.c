@@ -86,7 +86,17 @@ void print_help(void) {
  * Helpers for trace output
  * ---------------------------------------------------------------------- */
 
-static const char *SEP = "─────────────────────────────────────────────────────────\n";
+static const char *SEP  = "─────────────────────────────────────────────────────────\n";
+static const char *SEP2 = "  ─────────────────────────────────────────────────────\n";
+
+static const char *device_name_pt(int dev) {
+    switch (dev) {
+    case DEVICE_DISK:    return "disco";
+    case DEVICE_TAPE:    return "fita";
+    case DEVICE_PRINTER: return "impressora";
+    default:             return "?";
+    }
+}
 
 /* skip: if non-NULL, that process is omitted from the listing.
    Used to hide a just-preempted process from lo_queue on the same tick
@@ -209,6 +219,48 @@ void print_tick_trace(const Simulation *s) {
     }
     if (!any_done) printf("nenhum");
     printf("\n");
+
+    /* Event log */
+    printf("\n  LOG\n");
+    printf("%s", SEP2);
+    if (s->event_count == 0) {
+        printf("  (nenhum evento)\n");
+    } else {
+        for (int i = 0; i < s->event_count; i++) {
+            const SimEvent *ev = &s->events[i];
+            printf("  ");
+            switch (ev->type) {
+            case SIM_EVT_ARRIVED:
+                printf("P%d chegou → fila alta\n", ev->pid);
+                break;
+            case SIM_EVT_SCHEDULED:
+                printf("P%d entrou na CPU (fila %s)\n",
+                       ev->pid, ev->data1 == 0 ? "alta" : "baixa");
+                break;
+            case SIM_EVT_PREEMPTED:
+                printf("P%d preemptado (quantum %d/%d) → fila baixa\n",
+                       ev->pid, ev->data1, ev->data2);
+                break;
+            case SIM_EVT_IO_START:
+                printf("P%d → I/O %s iniciado (durará %d tick%s)\n",
+                       ev->pid, device_name_pt(ev->data1), ev->data2,
+                       ev->data2 == 1 ? "" : "s");
+                break;
+            case SIM_EVT_IO_TICK:
+                printf("P%d [%s] processou 1 tick, faltam %d\n",
+                       ev->pid, device_name_pt(ev->data1), ev->data2);
+                break;
+            case SIM_EVT_IO_RETURN:
+                printf("P%d [%s] I/O concluído → fila %s\n",
+                       ev->pid, device_name_pt(ev->data1),
+                       ev->data2 == 0 ? "alta" : "baixa");
+                break;
+            case SIM_EVT_COMPLETED:
+                printf("P%d concluído\n", ev->pid);
+                break;
+            }
+        }
+    }
 }
 
 void print_sim_done(const Simulation *s) {

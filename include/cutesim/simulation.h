@@ -4,6 +4,29 @@
 #include "cutesim/process.h"
 #include "cutesim/queue.h"
 
+/* -------------------------------------------------------------------------
+ * Per-tick event log
+ * ---------------------------------------------------------------------- */
+
+typedef enum {
+    SIM_EVT_ARRIVED,   /* process entered hi_queue                               */
+    SIM_EVT_SCHEDULED, /* process got CPU;  data1=0(ALTA)/1(BAIXA)               */
+    SIM_EVT_PREEMPTED, /* quantum exhausted; data1=used, data2=max               */
+    SIM_EVT_IO_START,  /* sent to device;   data1=DeviceType, data2=io_remaining */
+    SIM_EVT_IO_TICK,   /* I/O advanced 1t;  data1=DeviceType, data2=remaining    */
+    SIM_EVT_IO_RETURN, /* I/O done;         data1=DeviceType, data2=0(ALTA)/1(BAIXA) */
+    SIM_EVT_COMPLETED, /* process finished                                       */
+} SimEventType;
+
+#define SIM_MAX_EVENTS 128
+
+typedef struct {
+    SimEventType type;
+    int          pid;
+    int          data1;
+    int          data2;
+} SimEvent;
+
 typedef struct {
     /* --- public state (readable by callers and tests) --- */
     int       tick;
@@ -19,9 +42,13 @@ typedef struct {
     /* Set when a preemption occurs during a tick; cleared at the start of the
        next tick.  Allows the display to show the quantum=N/N moment. */
     Process  *last_preempted;
-    int       last_quantum_used;     /* quantum_used at the moment of preemption */
-    int       last_quantum_max;      /* quantum limit that was reached            */
-    int       last_preempted_priority; /* priority BEFORE demotion to PRIORITY_LOW */
+    int       last_quantum_used;       /* quantum_used at the moment of preemption  */
+    int       last_quantum_max;        /* quantum limit that was reached             */
+    int       last_preempted_priority; /* priority BEFORE demotion to PRIORITY_LOW  */
+
+    /* Per-tick event log — cleared at the start of each sim_step */
+    SimEvent  events[SIM_MAX_EVENTS];
+    int       event_count;
 
     /* --- internal --- */
     Process **pending;       /* processes waiting to arrive */

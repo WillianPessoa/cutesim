@@ -92,6 +92,19 @@ static int ensure_cap(void ***arr, int *count, int *cap) {
 }
 
 /* -------------------------------------------------------------------------
+ * Event log helper
+ * ---------------------------------------------------------------------- */
+
+static void add_event(Simulation *s, SimEventType type, int pid, int d1, int d2) {
+    if (s->event_count >= SIM_MAX_EVENTS) return;
+    s->events[s->event_count].type  = type;
+    s->events[s->event_count].pid   = pid;
+    s->events[s->event_count].data1 = d1;
+    s->events[s->event_count].data2 = d2;
+    s->event_count++;
+}
+
+/* -------------------------------------------------------------------------
  * Public API
  * ---------------------------------------------------------------------- */
 
@@ -150,8 +163,9 @@ void sim_step(Simulation *s) {
     Queue      *dev_queues[3] = { &s->disk_queue, &s->tape_queue, &s->printer_queue };
     DeviceType  dev_types[3]  = { DEVICE_DISK, DEVICE_TAPE, DEVICE_PRINTER };
 
-    /* Clear per-tick preemption event */
+    /* Clear per-tick state */
     s->last_preempted = NULL;
+    s->event_count    = 0;
 
     /* 1. Process arrivals for this tick — collect, sort by creation_seq, enqueue */
     Process *arrived[MAX_PROCESS_BATCH];
@@ -180,17 +194,20 @@ void sim_step(Simulation *s) {
 
     for (int i = 0; i < n_arrived; i++) {
         queue_enqueue(&s->hi_queue, arrived[i]);
+        add_event(s, SIM_EVT_ARRIVED, arrived[i]->pid, 0, 0);
     }
 
     /* 2. Schedule if CPU idle ------------------------------------------- */
     if (!s->running) {
-        Process *next = queue_dequeue(&s->hi_queue);
-        if (!next) next = queue_dequeue(&s->lo_queue);
+        int      from_lo = 0;
+        Process *next    = queue_dequeue(&s->hi_queue);
+        if (!next) { next = queue_dequeue(&s->lo_queue); from_lo = 1; }
         if (next) {
             process_set_status(next, PROC_RUNNING);
             s->running      = next;
             s->quantum_used = 0;
             if (next->first_cpu_tick < 0) next->first_cpu_tick = s->tick;
+            add_event(s, SIM_EVT_SCHEDULED, next->pid, from_lo, 0);
         }
     }
 
@@ -204,10 +221,14 @@ void sim_step(Simulation *s) {
             if (mode == IO_MODE_CONCURRENT) {
                 p->io_ticks++;
                 p->io_remaining--;
+                if (p->io_remaining > 0)
+                    add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
             } else {
                 if (node == q->head) {
                     p->io_ticks++;
                     p->io_remaining--;
+                    if (p->io_remaining > 0)
+                        add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
                 }
                 break;
             }
@@ -244,8 +265,11 @@ void sim_step(Simulation *s) {
                 prev = cur;
                 cur  = cur->next;
             }
+            Queue *rq   = return_queue(s, dev);
+            int    dest = (rq == &s->hi_queue) ? 0 : 1;
             process_set_status(p, PROC_READY);
-            queue_enqueue(return_queue(s, dev), p);
+            queue_enqueue(rq, p);
+            add_event(s, SIM_EVT_IO_RETURN, p->pid, (int)dev, dest);
         }
     }
 
@@ -263,6 +287,7 @@ void sim_step(Simulation *s) {
             p->io_count++;
             process_set_status(p, PROC_BLOCKED);
             queue_enqueue(device_queue(s, dev), p);
+            add_event(s, SIM_EVT_IO_START, p->pid, (int)dev, p->io_remaining);
             s->running = NULL;
             fired_io   = 1;
         }
@@ -274,6 +299,7 @@ void sim_step(Simulation *s) {
             p->io_count++;
             process_set_status(p, PROC_BLOCKED);
             queue_enqueue(device_queue(s, dev), p);
+            add_event(s, SIM_EVT_IO_START, p->pid, (int)dev, p->io_remaining);
             s->running = NULL;
             fired_io   = 1;
         }
@@ -286,6 +312,7 @@ void sim_step(Simulation *s) {
             if (p->cpu_burst_total > 0 && p->cpu_ticks >= p->cpu_burst_total) {
                 p->completion_tick = s->tick;
                 process_set_status(p, PROC_DONE);
+                add_event(s, SIM_EVT_COMPLETED, p->pid, 0, 0);
                 s->running      = NULL;
                 s->quantum_used = 0;
             } else {
@@ -298,6 +325,7 @@ void sim_step(Simulation *s) {
                     s->last_quantum_used       = s->quantum_used;
                     s->last_quantum_max        = quantum;
                     s->last_preempted_priority = p->priority;
+                    add_event(s, SIM_EVT_PREEMPTED, p->pid, s->quantum_used, quantum);
                     process_set_status(p, PROC_READY);
                     p->priority = PRIORITY_LOW;
                     queue_enqueue(&s->lo_queue, p);
