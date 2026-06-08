@@ -109,9 +109,9 @@ static void print_cpu_queue(const Queue *q, const Process *skip) {
         if (p != skip) {
             if (p->cpu_burst_total > 0) {
                 int restante = p->cpu_burst_total - p->cpu_ticks;
-                printf("PID=%-2d(rest=%-3d)  ", p->pid, restante);
+                printf("PID=%-2d (%d)  ", p->pid, restante);
             } else {
-                printf("PID=%-2d             ", p->pid);
+                printf("PID=%-2d  ", p->pid);
             }
             printed++;
         }
@@ -125,7 +125,8 @@ static void print_io_queue(const Queue *q) {
     const QueueNode *node = q->head;
     while (node) {
         const Process *p = (const Process *)node->data;
-        printf("PID=%-2d(faltam %-2d)  ", p->pid, p->io_remaining);
+        int servico = p->cpu_burst_total > 0 ? p->cpu_burst_total - p->cpu_ticks : 0;
+        printf("PID=%-2d (%d) [%d]  ", p->pid, servico, p->io_remaining);
         node = node->next;
     }
 }
