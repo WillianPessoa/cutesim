@@ -1,6 +1,6 @@
 build/
 .cache/
-docs/
+/docs/
 
 # Editor / OS cruft
 .DS_Store
