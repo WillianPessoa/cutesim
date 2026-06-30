@@ -1,0 +1,3 @@
+add_executable(test_snapshot test_snapshot.cpp)
+target_link_libraries(test_snapshot PRIVATE cutesim_common GTest::gtest_main)
+gtest_discover_tests(test_snapshot)

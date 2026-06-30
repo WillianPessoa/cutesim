@@ -41,6 +41,7 @@ target_compile_features(cutesim_lib PRIVATE c_std_11)
 
 include(CTest)
 
+add_subdirectory(apps/common)
 add_subdirectory(apps/rr-feedback)
 add_subdirectory(apps/viewer)
 add_subdirectory(tests)

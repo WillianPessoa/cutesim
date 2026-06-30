@@ -8,6 +8,7 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
 add_subdirectory(cli)
+add_subdirectory(common)
 add_subdirectory(queue)
 add_subdirectory(process)
 add_subdirectory(simulation)
