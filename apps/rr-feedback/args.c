@@ -37,6 +37,7 @@ static struct option long_opts[] = { { "quantum-hi", required_argument, 0, 'H' }
                                      { "steps", required_argument, 0, 'n' },
                                      { "trace", no_argument, 0, 't' },
                                      { "interactive", no_argument, 0, 'i' },
+                                     { "emit-file", required_argument, 0, 11 },
                                      { "help", no_argument, 0, 'h' },
                                      { 0, 0, 0, 0 } };
 
@@ -192,6 +193,9 @@ SimConfig parse_args(int argc, char **argv, int *error) {
             break;
         case 'i':
             cfg.run_mode = RUN_INTERACTIVE;
+            break;
+        case 11:
+            cfg.emit_file = optarg;
             break;
         case 'h':
             *error = 2;

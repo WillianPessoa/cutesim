@@ -4,4 +4,4 @@ target_link_libraries(rr_feedback_args PUBLIC cutesim_lib)
 target_include_directories(rr_feedback_args PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(rr-feedback main.c)
-target_link_libraries(rr-feedback PRIVATE rr_feedback_args)
+target_link_libraries(rr-feedback PRIVATE rr_feedback_args cutesim_common)

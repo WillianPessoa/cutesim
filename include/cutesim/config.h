@@ -48,4 +48,5 @@ typedef struct {
     int steps;           /* used when run_mode == RUN_STEPS */
     int trace;           /* 1 = print state each tick */
     char *scenario_file; /* NULL if not provided */
+    char *emit_file;     /* NULL if not provided; path for --emit-file */
 } SimConfig;
