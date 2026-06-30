@@ -41,7 +41,10 @@ typedef struct {
     int cpu_burst_total; /* total CPU ticks until PROC_DONE; 0 = no limit */
 
     int cpu_ticks;
-    int io_ticks;
+    int io_ticks;         /* total I/O ticks across all devices */
+    int io_ticks_disk;
+    int io_ticks_tape;
+    int io_ticks_printer;
     int io_count;
 
     int quantum_remaining;

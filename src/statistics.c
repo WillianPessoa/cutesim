@@ -2,11 +2,14 @@
 
 ProcStats stats_for_process(const Process *p) {
     ProcStats st = { 0 };
-    st.pid       = p->pid;
-    st.arrival   = p->arrival_tick;
-    st.service   = p->cpu_ticks;
-    st.io_ticks  = p->io_ticks;
-    st.io_count  = p->io_count;
+    st.pid              = p->pid;
+    st.arrival          = p->arrival_tick;
+    st.service          = p->cpu_ticks;
+    st.io_ticks         = p->io_ticks;
+    st.io_ticks_disk    = p->io_ticks_disk;
+    st.io_ticks_tape    = p->io_ticks_tape;
+    st.io_ticks_printer = p->io_ticks_printer;
+    st.io_count         = p->io_count;
     st.completed = (p->completion_tick >= 0) ? 1 : 0;
     st.response  = (p->first_cpu_tick >= 0) ? p->first_cpu_tick - p->arrival_tick : -1;
     if (st.completed) {

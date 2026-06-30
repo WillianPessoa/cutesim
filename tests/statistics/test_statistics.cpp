@@ -96,6 +96,24 @@ TEST(StatsForProcess, IoCountIsCarriedThrough) {
     process_destroy(p);
 }
 
+TEST(StatsForProcess, PerDeviceIoTicksCarriedThrough) {
+    DESCRIBE("io_ticks_disk/tape/printer are copied from PCB fields into ProcStats");
+    Process *p          = process_create(1, /*arrival*/ 0, /*seq*/ 0);
+    p->io_ticks_disk    = 3;
+    p->io_ticks_tape    = 5;
+    p->io_ticks_printer = 2;
+    p->io_ticks         = 10; /* total: 3 + 5 + 2 = 10 */
+
+    ProcStats st = stats_for_process(p);
+
+    EXPECT_EQ(st.io_ticks_disk,    3);
+    EXPECT_EQ(st.io_ticks_tape,    5);
+    EXPECT_EQ(st.io_ticks_printer, 2);
+    EXPECT_EQ(st.io_ticks,         10);
+
+    process_destroy(p);
+}
+
 TEST(StatsForProcess, IncompleteProcessHasNoTurnaroundOrWaiting) {
     DESCRIBE(
         "a process that never reached PROC_DONE is marked incomplete; turnaround/waiting stay 0");

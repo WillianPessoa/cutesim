@@ -9,7 +9,10 @@ typedef struct {
     int pid;
     int arrival;
     int service; /* cpu_ticks consumed */
-    int io_ticks;
+    int io_ticks;         /* total I/O ticks across all devices */
+    int io_ticks_disk;
+    int io_ticks_tape;
+    int io_ticks_printer;
     int io_count;
     int turnaround; /* completion - arrival   (valid iff completed) */
     int waiting;    /* turnaround - service - io_ticks (valid iff completed) */

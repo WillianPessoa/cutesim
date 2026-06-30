@@ -253,6 +253,9 @@ void sim_step(Simulation *s) {
             Process *p = node->data;
             if (mode == IO_MODE_CONCURRENT) {
                 p->io_ticks++;
+                if (dev_types[d] == DEVICE_DISK)         p->io_ticks_disk++;
+                else if (dev_types[d] == DEVICE_TAPE)    p->io_ticks_tape++;
+                else                                     p->io_ticks_printer++;
                 p->io_remaining--;
                 if (p->io_remaining > 0) {
                     add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
@@ -260,6 +263,9 @@ void sim_step(Simulation *s) {
             } else {
                 if (node == q->head) {
                     p->io_ticks++;
+                    if (dev_types[d] == DEVICE_DISK)         p->io_ticks_disk++;
+                    else if (dev_types[d] == DEVICE_TAPE)    p->io_ticks_tape++;
+                    else                                     p->io_ticks_printer++;
                     p->io_remaining--;
                     if (p->io_remaining > 0) {
                         add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);

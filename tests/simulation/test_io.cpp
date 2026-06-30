@@ -257,3 +257,69 @@ TEST(QueueIo, SecondProcessDelayedBehindFirst) {
 
     sim_destroy(s);
 }
+
+// ---------------------------------------------------------------------------
+// Per-device I/O tick counters
+// ---------------------------------------------------------------------------
+
+TEST(PerDeviceIo, DiskTicksCountedInDiskField) {
+    DESCRIBE("io_ticks_disk is incremented each tick a process spends in disk_queue; "
+             "tape and printer fields stay zero");
+    static const int DISK_DURATION = 3;
+    SimConfig cfg                  = test_config();
+    cfg.disk_duration              = { DISK_DURATION, DISK_DURATION };
+    cfg.io_mode_disk               = IO_MODE_CONCURRENT;
+    Simulation *s                  = sim_create(cfg);
+
+    Process *p       = process_create(1, 0, 0);
+    p->status        = PROC_BLOCKED;
+    p->io_remaining  = DISK_DURATION;
+    queue_enqueue(&s->disk_queue, p);
+    sim_add_process(s, p);
+    s->pending_count = 0;
+
+    sim_run(s, DISK_DURATION);
+
+    EXPECT_EQ(p->io_ticks,         DISK_DURATION);
+    EXPECT_EQ(p->io_ticks_disk,    DISK_DURATION);
+    EXPECT_EQ(p->io_ticks_tape,    0);
+    EXPECT_EQ(p->io_ticks_printer, 0);
+
+    sim_destroy(s);
+}
+
+TEST(PerDeviceIo, TapeAndPrinterTicksCountedSeparately) {
+    DESCRIBE("io_ticks_tape and io_ticks_printer are incremented for their respective queues");
+    static const int TAPE_DURATION    = 2;
+    static const int PRINTER_DURATION = 3;
+    SimConfig cfg                     = test_config();
+    cfg.tape_duration                 = { TAPE_DURATION, TAPE_DURATION };
+    cfg.printer_duration              = { PRINTER_DURATION, PRINTER_DURATION };
+    cfg.io_mode_tape                  = IO_MODE_CONCURRENT;
+    cfg.io_mode_printer               = IO_MODE_CONCURRENT;
+    Simulation *s                     = sim_create(cfg);
+
+    Process *pt = process_create(1, 0, 0);
+    Process *pp = process_create(2, 0, 1);
+    pt->status        = PROC_BLOCKED;
+    pp->status        = PROC_BLOCKED;
+    pt->io_remaining  = TAPE_DURATION;
+    pp->io_remaining  = PRINTER_DURATION;
+    queue_enqueue(&s->tape_queue,    pt);
+    queue_enqueue(&s->printer_queue, pp);
+    sim_add_process(s, pt);
+    sim_add_process(s, pp);
+    s->pending_count = 0;
+
+    sim_run(s, PRINTER_DURATION); /* long enough for both to finish */
+
+    EXPECT_EQ(pt->io_ticks_disk,    0);
+    EXPECT_EQ(pt->io_ticks_tape,    TAPE_DURATION);
+    EXPECT_EQ(pt->io_ticks_printer, 0);
+
+    EXPECT_EQ(pp->io_ticks_disk,    0);
+    EXPECT_EQ(pp->io_ticks_tape,    0);
+    EXPECT_EQ(pp->io_ticks_printer, PRINTER_DURATION);
+
+    sim_destroy(s);
+}
