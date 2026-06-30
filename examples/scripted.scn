@@ -1,0 +1,32 @@
+# === Cenário de exemplo — cobertura de scripting ===
+# Poucos processos, exercita todas as formas de scriptar.
+
+# --- Global ---
+quantum-hi = 3
+quantum-lo = 6
+seed       = 42
+
+# Dispositivos (duração global — fixa ou range)
+disk-duration    = 3        # fixa
+disk-mode        = queue
+tape-duration    = 2-4      # range
+tape-mode        = concurrent
+printer-duration = 2
+printer-mode     = queue
+
+# P1 — múltiplos I/O; disco usa a duração GLOBAL, fita tem override RANGE
+[process]
+arrival = 0
+burst   = 8
+io      = 3:disk, 5:tape:4-6
+
+# P2 — mesmo tick de chegada que P1 (desempate por ordem); I/O único, override FIXO
+[process]
+arrival = 0
+burst   = 5
+io      = 2:printer:6
+
+# P3 — chegada tardia; sem I/O (CPU puro)
+[process]
+arrival = 4
+burst   = 4

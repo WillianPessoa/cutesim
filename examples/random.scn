@@ -1,0 +1,27 @@
+# === Cenário de exemplo — carga aleatória ===
+# Sem blocos [process]: define só os globais e deixa o simulador
+# gerar 'process-count' processos aleatórios.
+
+quantum-hi = 3
+quantum-lo = 6
+seed       = 42
+
+# 8 processos, todos chegam no tick 0 (sem arrival-mode → batch)
+process-count = 8
+
+# Cada processo tem burst sorteado em [5, 15] ticks
+service-duration = 5-15
+
+# 25% de chance de I/O por tick na CPU
+p-io   = 25
+p-disk = 50
+p-tape = 30
+p-printer = 20
+
+# Durações e modos dos dispositivos
+disk-duration    = 2-4
+disk-mode        = queue
+tape-duration    = 3-5
+tape-mode        = concurrent
+printer-duration = 2
+printer-mode     = queue
