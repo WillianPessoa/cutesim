@@ -245,7 +245,11 @@ Key sources: Qt6 official examples, Qt Quick Controls, KDE/Kirigami.
 - `QML_SINGLETON` — for C++ singleton types
 - For **pure-QML singletons** (like Theme): `pragma Singleton` in the `.qml` file, list the file in `qt_add_qml_module` → engine handles it. No C++ needed.
 
-**KDE/Kirigami patterns** (informational; not adopted here):
+**KDE/Kirigami patterns** (informational; not adopted now):
 - ECM (Extra CMake Modules) for KDE-style builds — too heavy for a single app
 - `contents/ui/` layout — convention for Plasma applets; not relevant here
 - Relevant: KDE consistently uses `qt_add_qml_module` + `QML_ELEMENT` for their C++ types
+- **Kirigami Addons Onboarding** (Sandro/KDE) — declarative guided-tour steps,
+  per-widget highlight + blur, lifecycle hooks. API in refinement for an upcoming
+  Kirigami Addons release. Tracked as TD3: add after the module ships.
+  Ref: https://lnkd.in/dREnDYdj
