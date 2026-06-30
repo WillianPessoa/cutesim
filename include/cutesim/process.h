@@ -1,6 +1,11 @@
 #pragma once
 
-enum { PRIORITY_HIGH = 0, PRIORITY_LOW = 1 };
+#include "cutesim/config.h"
+
+enum {
+    PRIORITY_HIGH = 0,
+    PRIORITY_LOW  = 1
+};
 
 typedef enum {
     PROC_READY,
@@ -16,22 +21,24 @@ typedef enum {
 } DeviceType;
 
 typedef struct {
-    int        tick;
+    int service_tick; /* fire after the process has accrued this many CPU ticks */
     DeviceType device;
+    int has_duration;  /* 1 if `duration` overrides the global device duration */
+    Duration duration; /* explicit I/O duration; valid iff has_duration */
 } ScriptedIO;
 
 typedef struct {
-    int        pid;
-    int        ppid;
-    int        priority;
-    int        creation_seq;
+    int pid;
+    int ppid;
+    int priority;
+    int creation_seq;
     ProcStatus status;
 
     int arrival_tick;
-    int first_cpu_tick;   /* -1 until first scheduled */
-    int completion_tick;  /* -1 until done            */
+    int first_cpu_tick;  /* -1 until first scheduled */
+    int completion_tick; /* -1 until done            */
 
-    int cpu_burst_total;   /* total CPU ticks until PROC_DONE; 0 = no limit */
+    int cpu_burst_total; /* total CPU ticks until PROC_DONE; 0 = no limit */
 
     int cpu_ticks;
     int io_ticks;
@@ -41,8 +48,8 @@ typedef struct {
     int io_remaining;
 
     ScriptedIO *io_script;
-    int         io_script_len;
-    int         io_script_pos;
+    int io_script_len;
+    int io_script_pos;
 } Process;
 
 /* Allocate and initialise a new process.

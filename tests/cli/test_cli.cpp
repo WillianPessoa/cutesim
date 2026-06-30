@@ -100,6 +100,7 @@ TEST(ParseArgs, ArrivalRateFromFlag) {
     SimConfig cfg    = parse_args(2, argv, &error);
     EXPECT_EQ(error, 0);
     EXPECT_EQ(cfg.arrival_rate, 20);
+    EXPECT_EQ(cfg.arrival_mode, ARRIVAL_BERNOULLI); /* retrocompat */
 }
 
 TEST(ParseArgs, PIoFromFlag) {
@@ -440,5 +441,154 @@ TEST(DeviceProb, ExplicitValueExceedingHundredIsError) {
     char     *argv[] = {(char *)"rr-feedback", (char *)"--p-disk=101", nullptr};
     int       error  = 0;
     parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+// ---------------------------------------------------------------------------
+// ArrivalMode — parsing and retrocompat
+// ---------------------------------------------------------------------------
+
+TEST(ArrivalMode, DefaultIsBatch) {
+    char     *argv[] = {(char *)"rr-feedback", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(1, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.arrival_mode, ARRIVAL_BATCH);
+}
+
+TEST(ArrivalMode, BatchFromFlag) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=batch", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.arrival_mode, ARRIVAL_BATCH);
+}
+
+TEST(ArrivalMode, BernoulliFromFlag) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=bernoulli",
+                    (char *)"--arrival-rate=30", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.arrival_mode, ARRIVAL_BERNOULLI);
+    EXPECT_EQ(cfg.arrival_rate, 30);
+}
+
+TEST(ArrivalMode, GeometricFromFlag) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=geometric",
+                    (char *)"--arrival-rate=30", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.arrival_mode, ARRIVAL_GEOMETRIC);
+    EXPECT_EQ(cfg.arrival_rate, 30);
+}
+
+TEST(ArrivalMode, PoissonFromFlag) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=poisson",
+                    (char *)"--arrival-lambda=1.5", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.arrival_mode, ARRIVAL_POISSON);
+    EXPECT_DOUBLE_EQ(cfg.arrival_lambda, 1.5);
+}
+
+TEST(ArrivalMode, UniformFromFlag) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=uniform",
+                    (char *)"--arrival-interval=3", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.arrival_mode, ARRIVAL_UNIFORM);
+    EXPECT_EQ(cfg.arrival_interval, 3);
+}
+
+TEST(ArrivalMode, ArrivalLambdaFromFlag) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=poisson",
+                    (char *)"--arrival-lambda=2.5", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_DOUBLE_EQ(cfg.arrival_lambda, 2.5);
+}
+
+TEST(ArrivalMode, ArrivalIntervalFromFlag) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=uniform",
+                    (char *)"--arrival-interval=5", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.arrival_interval, 5);
+}
+
+TEST(ArrivalMode, ArrivalRateAloneSetsBernoulli) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--arrival-rate=30", nullptr};
+    int       error  = 0;
+    SimConfig cfg    = parse_args(2, argv, &error);
+    EXPECT_EQ(error, 0);
+    EXPECT_EQ(cfg.arrival_mode, ARRIVAL_BERNOULLI);
+}
+
+TEST(ArrivalMode, BatchModeIgnoresArrivalRate) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=batch",
+                    (char *)"--arrival-rate=30", nullptr};
+    int   error  = 0;
+    parse_args(3, argv, &error);
+    EXPECT_EQ(error, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Validation — arrival mode errors
+// ---------------------------------------------------------------------------
+
+TEST(Validation, ArrivalModeUnknownIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=foobar", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, ArrivalModePoissonWithoutLambdaIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=poisson", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, ArrivalModeUniformWithoutIntervalIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=uniform", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, ArrivalModeBernoulliWithoutRateIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=bernoulli", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, ArrivalModeGeometricWithoutRateIsError) {
+    char     *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=geometric", nullptr};
+    int       error  = 0;
+    parse_args(2, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, ArrivalLambdaZeroIsError) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=poisson",
+                    (char *)"--arrival-lambda=0", nullptr};
+    int   error  = 0;
+    parse_args(3, argv, &error);
+    EXPECT_EQ(error, 1);
+}
+
+TEST(Validation, ArrivalIntervalZeroIsError) {
+    char *argv[] = {(char *)"rr-feedback", (char *)"--arrival-mode=uniform",
+                    (char *)"--arrival-interval=0", nullptr};
+    int   error  = 0;
+    parse_args(3, argv, &error);
     EXPECT_EQ(error, 1);
 }

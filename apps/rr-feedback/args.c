@@ -2,6 +2,7 @@
 
 #include <getopt.h>
 #include <stdlib.h>
+#include <string.h>
 
 static SimConfig default_config(void) {
     SimConfig cfg          = { 0 };
@@ -18,6 +19,9 @@ static struct option long_opts[] = { { "quantum-hi", required_argument, 0, 'H' }
                                      { "quantum-lo", required_argument, 0, 'L' },
                                      { "process-count", required_argument, 0, 'c' },
                                      { "arrival-rate", required_argument, 0, 'a' },
+                                     { "arrival-mode", required_argument, 0, 8 },
+                                     { "arrival-lambda", required_argument, 0, 9 },
+                                     { "arrival-interval", required_argument, 0, 10 },
                                      { "p-io", required_argument, 0, 'p' },
                                      { "p-disk", required_argument, 0, 'D' },
                                      { "p-tape", required_argument, 0, 'T' },
@@ -65,6 +69,28 @@ static IoMode parse_io_mode(const char *str) {
     return IO_MODE_CONCURRENT;
 }
 
+/* Returns 0 and stores the value in *out when str is a valid double with no trailing junk.
+   Returns -1 on non-numeric input or trailing characters. */
+static int parse_double_strict(const char *str, double *out) {
+    char  *end = NULL;
+    double val = strtod(str, &end);
+    if (end == str || *end != '\0') {
+        return -1;
+    }
+    *out = val;
+    return 0;
+}
+
+/* Returns 0 and stores the ArrivalMode in *out.  Returns -1 on unknown string. */
+static int parse_arrival_mode_str(const char *str, ArrivalMode *out) {
+    if (strcmp(str, "batch") == 0)     { *out = ARRIVAL_BATCH;     return 0; }
+    if (strcmp(str, "bernoulli") == 0) { *out = ARRIVAL_BERNOULLI; return 0; }
+    if (strcmp(str, "geometric") == 0) { *out = ARRIVAL_GEOMETRIC; return 0; }
+    if (strcmp(str, "poisson") == 0)   { *out = ARRIVAL_POISSON;   return 0; }
+    if (strcmp(str, "uniform") == 0)   { *out = ARRIVAL_UNIFORM;   return 0; }
+    return -1;
+}
+
 /* Returns 0 and stores the value in *out when str is a clean base-10 integer.
    Returns -1 on floats, trailing junk, or empty input. */
 static int parse_int_strict(const char *str, int *out) {
@@ -78,11 +104,13 @@ static int parse_int_strict(const char *str, int *out) {
 }
 
 SimConfig parse_args(int argc, char **argv, int *error) {
-    *error          = 0;
-    SimConfig cfg   = default_config();
-    int disk_set    = 0;
-    int tape_set    = 0;
-    int printer_set = 0;
+    *error              = 0;
+    SimConfig cfg       = default_config();
+    int disk_set        = 0;
+    int tape_set        = 0;
+    int printer_set     = 0;
+    int arrival_mode_set = 0;
+    int arrival_rate_set = 0;
 
     optind = 1;
     opterr = 0; /* suppress getopt's own error messages; we handle '?' ourselves */
@@ -101,6 +129,17 @@ SimConfig parse_args(int argc, char **argv, int *error) {
             break;
         case 'a':
             if (parse_int_strict(optarg, &cfg.arrival_rate) != 0) { *error = 1; return cfg; }
+            arrival_rate_set = 1;
+            break;
+        case 8:
+            if (parse_arrival_mode_str(optarg, &cfg.arrival_mode) != 0) { *error = 1; return cfg; }
+            arrival_mode_set = 1;
+            break;
+        case 9:
+            if (parse_double_strict(optarg, &cfg.arrival_lambda) != 0) { *error = 1; return cfg; }
+            break;
+        case 10:
+            if (parse_int_strict(optarg, &cfg.arrival_interval) != 0) { *error = 1; return cfg; }
             break;
         case 'p':
             if (parse_int_strict(optarg, &cfg.p_io) != 0) { *error = 1; return cfg; }
@@ -227,6 +266,27 @@ SimConfig parse_args(int argc, char **argv, int *error) {
         cfg.printer_duration.min > cfg.printer_duration.max) {
         *error = 1;
         return cfg;
+    }
+
+    /* Retrocompat: --arrival-rate alone (no --arrival-mode) → bernoulli */
+    if (arrival_rate_set && !arrival_mode_set) {
+        cfg.arrival_mode = ARRIVAL_BERNOULLI;
+    }
+
+    /* Mode-specific required parameters */
+    switch (cfg.arrival_mode) {
+    case ARRIVAL_BERNOULLI:
+    case ARRIVAL_GEOMETRIC:
+        if (cfg.arrival_rate <= 0) { *error = 1; return cfg; }
+        break;
+    case ARRIVAL_POISSON:
+        if (!(cfg.arrival_lambda > 0.0)) { *error = 1; return cfg; }
+        break;
+    case ARRIVAL_UNIFORM:
+        if (cfg.arrival_interval <= 0) { *error = 1; return cfg; }
+        break;
+    case ARRIVAL_BATCH:
+        break;
     }
 
     return cfg;

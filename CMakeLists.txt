@@ -25,10 +25,14 @@ target_sources(cutesim_lib PRIVATE
     src/simulation.c
     src/process.c
     src/queue.c
+    src/rng.c
+    src/scenario.c
     src/statistics.c
     include/cutesim/simulation.h
     include/cutesim/process.h
     include/cutesim/queue.h
+    include/cutesim/rng.h
+    include/cutesim/scenario.h
     include/cutesim/statistics.h
     include/cutesim/config.h
 )

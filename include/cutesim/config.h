@@ -16,11 +16,22 @@ typedef enum {
     RUN_INTERACTIVE
 } RunMode;
 
+typedef enum {
+    ARRIVAL_BATCH,     /* all processes arrive at tick 0 (default) */
+    ARRIVAL_BERNOULLI, /* p% chance of arrival each tick (--arrival-rate) */
+    ARRIVAL_GEOMETRIC, /* alias for BERNOULLI */
+    ARRIVAL_POISSON,   /* Poisson arrivals/tick with mean lambda (--arrival-lambda) */
+    ARRIVAL_UNIFORM    /* one arrival every N ticks (--arrival-interval) */
+} ArrivalMode;
+
 typedef struct {
     int quantum_hi;       /* default: 3  */
     int quantum_lo;       /* default: 6  */
     int process_count;    /* total processes to generate */
-    int arrival_rate;     /* % per tick; 0 = all arrive at tick 0 */
+    int arrival_rate;     /* % per tick; used by BERNOULLI/GEOMETRIC */
+    ArrivalMode arrival_mode;  /* default: ARRIVAL_BATCH */
+    double arrival_lambda;     /* mean arrivals/tick for POISSON */
+    int arrival_interval;      /* ticks between arrivals for UNIFORM */
     Duration service_duration; /* CPU burst length per process; {0,0} = no limit */
     int p_io;          /* % chance of I/O per tick (e.g. 20) */
     int p_disk;        /* conditional %; 0 = equal share */
