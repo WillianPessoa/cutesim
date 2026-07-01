@@ -1,5 +1,8 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
+
+#include "SimController.h"
 
 int main(int argc, char *argv[])
 {
@@ -7,7 +10,10 @@ int main(int argc, char *argv[])
     app.setApplicationName("CuteSim");
     app.setOrganizationName("cutesim");
 
+    SimController controller;
+
     QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty("controller", &controller);
     engine.loadFromModule("CuteSim.Viewer", "Main");
 
     if (engine.rootObjects().isEmpty())
