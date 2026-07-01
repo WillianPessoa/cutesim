@@ -1,3 +1,7 @@
 add_executable(test_integration test_complete_scenario.cpp)
 target_link_libraries(test_integration PRIVATE cutesim_lib GTest::gtest_main)
 gtest_discover_tests(test_integration)
+
+add_executable(test_tcp_smoke test_tcp_smoke.cpp)
+target_link_libraries(test_tcp_smoke PRIVATE cutesim_common GTest::gtest_main)
+gtest_discover_tests(test_tcp_smoke)
