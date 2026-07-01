@@ -9,6 +9,7 @@
 #include "cutesim/simulation.h"
 #include "display.h"
 #include "emit_file.h"
+#include "emit_tcp.h"
 
 /* -------------------------------------------------------------------------
  * Process generation uses cutesim/rng.h with its own state word, kept
@@ -124,6 +125,29 @@ static void spawn_scripted(const Scenario *sc, Simulation *sim) {
 }
 
 /* -------------------------------------------------------------------------
+ * TCP serve adapter
+ *
+ * emit_tcp_serve owns the Simulation and recreates it on `reset`; it calls
+ * back here to (re)populate a fresh sim with the same processes main would
+ * have spawned, so scripted and random scenarios both work over the wire.
+ * ---------------------------------------------------------------------- */
+
+typedef struct {
+    SimConfig       cfg;
+    const Scenario *scenario;
+    int             scripted;
+} SpawnCtx;
+
+static void spawn_adapter(Simulation *sim, void *ctx) {
+    SpawnCtx *c = (SpawnCtx *)ctx;
+    if (c->scripted) {
+        spawn_scripted(c->scenario, sim);
+    } else {
+        spawn_processes(c->cfg, sim);
+    }
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -156,6 +180,15 @@ int main(int argc, char *argv[]) {
         if (scripted) {
             cfg.process_count = scenario.process_count;
         }
+    }
+
+    /* Serve mode takes over the run loop: no local stepping, no file emit. */
+    if (cfg.serve_port != 0) {
+        print_header(cfg, scripted);
+        SpawnCtx sctx = { cfg, &scenario, scripted };
+        int rc        = emit_tcp_serve(cfg, spawn_adapter, &sctx, cfg.serve_port);
+        scenario_free(&scenario);
+        return rc == 0 ? 0 : 1;
     }
 
     FILE *emit_f = NULL;

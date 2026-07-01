@@ -49,4 +49,6 @@ typedef struct {
     int trace;           /* 1 = print state each tick */
     char *scenario_file; /* NULL if not provided */
     char *emit_file;     /* NULL if not provided; path for --emit-file */
+    int   serve_port;    /* TCP command server: 0 = off, -1 = on (default port),
+                            >0 = on (explicit port). Set by --serve[=PORT]. */
 } SimConfig;

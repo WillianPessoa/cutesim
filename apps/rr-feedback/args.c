@@ -38,6 +38,7 @@ static struct option long_opts[] = { { "quantum-hi", required_argument, 0, 'H' }
                                      { "trace", no_argument, 0, 't' },
                                      { "interactive", no_argument, 0, 'i' },
                                      { "emit-file", required_argument, 0, 11 },
+                                     { "serve", optional_argument, 0, 12 },
                                      { "help", no_argument, 0, 'h' },
                                      { 0, 0, 0, 0 } };
 
@@ -197,6 +198,19 @@ SimConfig parse_args(int argc, char **argv, int *error) {
         case 11:
             cfg.emit_file = optarg;
             break;
+        case 12:
+            /* --serve alone → -1 (default port, resolved by the server);
+               --serve=PORT → explicit port */
+            if (optarg) {
+                if (parse_int_strict(optarg, &cfg.serve_port) != 0 || cfg.serve_port <= 0 ||
+                    cfg.serve_port > 65535) {
+                    *error = 1;
+                    return cfg;
+                }
+            } else {
+                cfg.serve_port = -1;
+            }
+            break;
         case 'h':
             *error = 2;
             return cfg;
@@ -215,6 +229,13 @@ SimConfig parse_args(int argc, char **argv, int *error) {
 
     /* --- post-parse validation --- */
     if (cfg.quantum_hi <= 0 || cfg.quantum_lo <= 0) {
+        *error = 1;
+        return cfg;
+    }
+
+    /* --serve drives the run loop over the network; it cannot also stream to a
+       file in the same process. */
+    if (cfg.serve_port != 0 && cfg.emit_file) {
         *error = 1;
         return cfg;
     }

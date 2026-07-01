@@ -105,6 +105,13 @@ void print_help(void) {
     printf("                          process arrivals and forced I/O events\n");
     printf("\n");
 
+    printf("Output\n");
+    printf("  --emit-file=PATH        append one JSON snapshot line per tick to PATH\n");
+    printf("  --serve[=PORT]          serve snapshots over TCP (default port 9000);\n");
+    printf("                          commands: step, status, reset — one JSON line per reply.\n");
+    printf("                          mutually exclusive with --emit-file\n");
+    printf("\n");
+
     printf("Other\n");
     printf("  -h / --help             show this help\n");
 }
