@@ -17,6 +17,24 @@ qt_add_qml_module(cutesim_viewer
     QML_FILES
         qml/Main.qml
         qml/theme/Theme.qml
+        qml/components/GlassCard.qml
+        qml/components/Logo.qml
+        qml/components/StatusChip.qml
+        qml/components/TickChip.qml
+        qml/components/CtrlButton.qml
+        qml/components/SpinBox.qml
+        qml/components/Toast.qml
+        qml/components/Sparkline.qml
+        qml/components/StatItem.qml
+        qml/components/QueueChip.qml
+        qml/components/QueueView.qml
+        qml/components/Header.qml
+        qml/components/CPUView.qml
+        qml/components/TimelineChart.qml
+        qml/components/StatsBar.qml
+        qml/components/FinishedTable.qml
+        qml/components/LaunchOverlay.qml
+        qml/components/InspectorPanel.qml
 )
 
 target_include_directories(cutesim_viewer PRIVATE src)

@@ -242,8 +242,8 @@ void SimController::onSnapshot(const QJsonObject &snap, const QString &raw)
         if (e.contains("queue"))        m["queue"]        = e["queue"].toString();
         if (e.contains("device"))       m["device"]       = e["device"].toString();
         if (e.contains("io_remaining")) m["io_remaining"] = e["io_remaining"].toInt();
-        if (e.contains("used"))         m["used"]         = e["used"].toInt();
-        if (e.contains("max"))          m["max"]          = e["max"].toInt();
+        if (e.contains("quantum_used"))  m["quantum_used"]  = e["quantum_used"].toInt();
+        if (e.contains("quantum_max"))  m["quantum_max"]  = e["quantum_max"].toInt();
         m_events.append(m);
     }
 
