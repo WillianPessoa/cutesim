@@ -1,17 +1,23 @@
 find_package(Qt6 REQUIRED COMPONENTS Quick Network)
 qt_standard_project_setup(REQUIRES 6.2)
 
-set_source_files_properties(qml/theme/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-
-qt_add_executable(cutesim_viewer
-    main.cpp
+# ── C++ backend library ────────────────────────────────────────────────────
+# Separating SimClient + SimController from the QML module and the executable
+# lets both the viewer and the test suite link to the same compiled objects.
+add_library(cutesim_viewer_lib STATIC
     src/SimClient.cpp
     src/SimClient.h
     src/SimController.cpp
     src/SimController.h
 )
+target_include_directories(cutesim_viewer_lib PUBLIC src)
+target_link_libraries(cutesim_viewer_lib PUBLIC cutesim_lib Qt6::Quick Qt6::Network)
 
-qt_add_qml_module(cutesim_viewer
+# ── QML module (static library so tests can link to it) ───────────────────
+set_source_files_properties(qml/theme/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
+qt_add_library(cutesim_viewer_qml STATIC)
+qt_add_qml_module(cutesim_viewer_qml
     URI CuteSim.Viewer
     VERSION 1.0
     QML_FILES
@@ -36,6 +42,12 @@ qt_add_qml_module(cutesim_viewer
         qml/components/LaunchOverlay.qml
         qml/components/InspectorPanel.qml
 )
+target_link_libraries(cutesim_viewer_qml PRIVATE cutesim_viewer_lib)
 
-target_include_directories(cutesim_viewer PRIVATE src)
-target_link_libraries(cutesim_viewer PRIVATE cutesim_lib Qt6::Quick Qt6::Network)
+# ── Main viewer executable ─────────────────────────────────────────────────
+qt_add_executable(cutesim_viewer main.cpp)
+target_link_libraries(cutesim_viewer PRIVATE
+    cutesim_viewer_lib
+    cutesim_viewer_qml
+    cutesim_viewer_qmlplugin
+)

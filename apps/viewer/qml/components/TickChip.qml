@@ -31,6 +31,7 @@ Item {
         }
         Text {
             id: num
+            objectName: "num"
             text: String(root.tick).padStart ? String(root.tick).padStart(3, "0")
                                              : ("000" + root.tick).slice(-3)
             color: Theme.textStrong

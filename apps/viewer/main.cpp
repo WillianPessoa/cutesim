@@ -1,8 +1,11 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QtQml/QQmlExtensionPlugin>
 
 #include "SimController.h"
+
+Q_IMPORT_QML_PLUGIN(CuteSim_ViewerPlugin)
 
 int main(int argc, char *argv[])
 {

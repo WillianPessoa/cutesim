@@ -15,4 +15,4 @@ add_subdirectory(simulation)
 add_subdirectory(statistics)
 add_subdirectory(scenario)
 add_subdirectory(integration)
-
+add_subdirectory(viewer)
