@@ -1,0 +1,12 @@
+# CPU-bound basics
+# Five CPU-only processes arriving together. No I/O at all — watch pure
+# round-robin feedback: quantum expiry on the high queue demotes processes
+# to the low queue until every burst completes.
+
+quantum-hi = 3
+quantum-lo = 6
+seed       = 7
+
+process-count    = 5
+service-duration = 6-14
+p-io             = 0

@@ -118,6 +118,45 @@ TEST_F(ScenarioBridgeTest, ToLocalPathHandlesUrlsAndPlainPaths)
     EXPECT_EQ(bridge.toLocalPath("/tmp/x.scn"), "/tmp/x.scn");
 }
 
+TEST_F(ScenarioBridgeTest, BundledScenariosShipWithTheApp)
+{
+    /* Resolved by walking up from the test binary to the source tree's
+       scenarios/ dir — the same lookup the deployed viewer uses. */
+    QVariantList list = bridge.bundledScenarios();
+    ASSERT_GE(list.size(), 3);
+
+    for (const QVariant &v : list) {
+        QVariantMap m = v.toMap();
+        EXPECT_FALSE(m["title"].toString().isEmpty());
+        EXPECT_FALSE(m["description"].toString().isEmpty());
+        /* every shipped preset must parse with the C parser */
+        QVariantMap s = bridge.summarize(m["path"].toString());
+        EXPECT_TRUE(s["ok"].toBool()) << m["file"].toString().toStdString();
+    }
+
+    /* sorted by file name → numeric prefixes fix the display order */
+    EXPECT_TRUE(list[0].toMap()["file"].toString().startsWith("01-"));
+}
+
+TEST_F(ScenarioBridgeTest, BundledScenariosEnvOverrideAndHeaderComment)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    ASSERT_TRUE(bridge.writeFile(dir.filePath("a.scn"),
+        "# Title line\n# Desc one\n# desc two\n\nquantum-hi = 4\n"));
+
+    qputenv("CUTESIM_SCENARIOS", dir.path().toLocal8Bit());
+    QVariantList list = bridge.bundledScenarios();
+    qunsetenv("CUTESIM_SCENARIOS");
+
+    ASSERT_EQ(list.size(), 1);
+    QVariantMap m = list[0].toMap();
+    EXPECT_EQ(m["file"].toString(), "a.scn");
+    EXPECT_EQ(m["title"].toString(), "Title line");
+    EXPECT_EQ(m["description"].toString(), "Desc one desc two");
+    EXPECT_EQ(m["path"].toString(), dir.filePath("a.scn"));
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);

@@ -1,0 +1,23 @@
+# I/O crossroads
+# Eight processes with a 25% chance of requesting I/O on every CPU tick,
+# spread across all three devices. Shows the feedback routing: disk returns
+# to the low queue, tape and printer return to the high queue.
+
+quantum-hi = 3
+quantum-lo = 6
+seed       = 1234
+
+process-count    = 8
+service-duration = 8-18
+
+p-io      = 25
+p-disk    = 50
+p-tape    = 30
+p-printer = 20
+
+disk-duration    = 3-5
+disk-mode        = queue
+tape-duration    = 2-4
+tape-mode        = concurrent
+printer-duration = 6
+printer-mode     = queue

@@ -1,0 +1,35 @@
+# Scripted showcase
+# Four fully deterministic processes: every device gets used, durations come
+# fixed, ranged and overridden per event, two processes tie on arrival and
+# one shows up late. Same trace on every run.
+
+quantum-hi = 3
+quantum-lo = 6
+seed       = 42
+
+disk-duration    = 4
+tape-duration    = 3-5
+printer-duration = 2
+
+# P1 — disk with the global duration, then tape with a range override
+[process]
+arrival = 0
+burst   = 9
+io      = 2:disk, 6:tape:4-6
+
+# P2 — arrives with P1 (tie-break by order); printer with a fixed override
+[process]
+arrival = 0
+burst   = 6
+io      = 3:printer:5
+
+# P3 — CPU-only: demoted to the low queue by quantum expiry
+[process]
+arrival = 1
+burst   = 8
+
+# P4 — late arrival, quick disk round-trip
+[process]
+arrival = 5
+burst   = 4
+io      = 1:disk

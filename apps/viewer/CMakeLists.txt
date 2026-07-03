@@ -56,3 +56,12 @@ target_link_libraries(cutesim_viewer PRIVATE
     cutesim_viewer_qml
     cutesim_viewer_qmlplugin
 )
+
+# Bundled scenarios: ship the scenarios/ presets next to the binary so
+# ScenarioBridge::bundledScenarios() finds them in a deployed layout too.
+add_custom_command(TARGET cutesim_viewer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/scenarios
+            $<TARGET_FILE_DIR:cutesim_viewer>/scenarios
+    COMMENT "Copying bundled scenarios next to cutesim_viewer"
+)

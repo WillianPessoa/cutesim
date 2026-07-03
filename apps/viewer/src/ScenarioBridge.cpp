@@ -1,6 +1,9 @@
 #include "ScenarioBridge.h"
 
+#include <QCoreApplication>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QTextStream>
 #include <QUrl>
 
@@ -149,6 +152,81 @@ bool ScenarioBridge::writeFile(const QString &pathOrUrl, const QString &text) co
     QTextStream ts(&f);
     ts << text;
     return true;
+}
+
+/* Resolve the bundled scenarios directory: CUTESIM_SCENARIOS env override,
+   then scenarios/ next to the binary (deployed), then walking up from the
+   binary towards the source tree (development/tests) — same idiom as
+   SimController::findBinary(). */
+static QString bundledScenariosDir()
+{
+    const QByteArray env = qgetenv("CUTESIM_SCENARIOS");
+    if (!env.isEmpty()) {
+        const QString s = QString::fromLocal8Bit(env);
+        if (QFileInfo(s).isDir())
+            return s;
+    }
+
+    const QString base = QCoreApplication::applicationDirPath();
+    if (QFileInfo(base + "/scenarios").isDir())
+        return base + "/scenarios";
+
+    QDir dir(base);
+    for (int i = 0; i < 8; ++i) {
+        const QString c = dir.filePath("scenarios");
+        if (QFileInfo(c).isDir())
+            return c;
+        if (!dir.cdUp())
+            break;
+    }
+    return {};
+}
+
+/* Extract title + description from the leading "#" comment block. */
+static void readHeaderComment(const QString &path, QString *title, QString *description)
+{
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return;
+
+    QStringList descLines;
+    QTextStream ts(&f);
+    while (!ts.atEnd()) {
+        const QString line = ts.readLine().trimmed();
+        if (!line.startsWith(QLatin1Char('#')))
+            break;
+        const QString body = line.mid(1).trimmed();
+        if (body.isEmpty())
+            continue;
+        if (title->isEmpty())
+            *title = body;
+        else
+            descLines << body;
+    }
+    *description = descLines.join(QLatin1Char(' '));
+}
+
+QVariantList ScenarioBridge::bundledScenarios() const
+{
+    const QString dirPath = bundledScenariosDir();
+    if (dirPath.isEmpty())
+        return {};
+
+    QVariantList out;
+    const QFileInfoList entries = QDir(dirPath).entryInfoList(
+        { QStringLiteral("*.scn") }, QDir::Files | QDir::Readable, QDir::Name);
+    for (const QFileInfo &fi : entries) {
+        QString title, description;
+        readHeaderComment(fi.absoluteFilePath(), &title, &description);
+
+        QVariantMap m;
+        m["file"]        = fi.fileName();
+        m["path"]        = fi.absoluteFilePath();
+        m["title"]       = title.isEmpty() ? fi.completeBaseName() : title;
+        m["description"] = description;
+        out << m;
+    }
+    return out;
 }
 
 QString ScenarioBridge::toLocalPath(const QString &pathOrUrl) const

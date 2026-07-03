@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantList>
 #include <QVariantMap>
 
 /* ScenarioBridge — QML-facing wrapper around the C scenario parser.
@@ -34,6 +35,14 @@ public:
 
     Q_INVOKABLE QString readFile(const QString &pathOrUrl) const;
     Q_INVOKABLE bool    writeFile(const QString &pathOrUrl, const QString &text) const;
+
+    /* Scenarios shipped with the application (the scenarios/ directory next
+       to the binary, or in the source tree during development; CUTESIM_SCENARIOS
+       overrides). Sorted by file name. Each entry:
+       { file, path, title, description }
+       title/description come from the leading "#" comment block of the file
+       (first line = title, following lines = description). */
+    Q_INVOKABLE QVariantList bundledScenarios() const;
 
     /* file:// URL → native path (FileDialog hands back URLs). */
     Q_INVOKABLE QString toLocalPath(const QString &pathOrUrl) const;
