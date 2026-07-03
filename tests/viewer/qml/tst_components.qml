@@ -333,6 +333,11 @@ Item {
             compare(c.scenarioPath, "/tmp/x.scn")
         }
 
+        function test_bundled_empty_without_bridge() {
+            var c = createTemporaryObject(overlayComp, this)
+            compare(c.bundled.length, 0)
+        }
+
         Component { id: overlayComp; LaunchOverlay { visible: false } }
     }
 
