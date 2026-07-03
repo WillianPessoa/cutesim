@@ -5,6 +5,8 @@ qt_standard_project_setup(REQUIRES 6.2)
 # Separating SimClient + SimController from the QML module and the executable
 # lets both the viewer and the test suite link to the same compiled objects.
 add_library(cutesim_viewer_lib STATIC
+    src/ScenarioBridge.cpp
+    src/ScenarioBridge.h
     src/SimClient.cpp
     src/SimClient.h
     src/SimController.cpp
@@ -39,7 +41,10 @@ qt_add_qml_module(cutesim_viewer_qml
         qml/components/TimelineChart.qml
         qml/components/StatsBar.qml
         qml/components/FinishedTable.qml
+        qml/components/ProcessDetail.qml
         qml/components/LaunchOverlay.qml
+        qml/components/SegmentControl.qml
+        qml/components/ScenarioEditor.qml
         qml/components/InspectorPanel.qml
 )
 target_link_libraries(cutesim_viewer_qml PRIVATE cutesim_viewer_lib)

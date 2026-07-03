@@ -12,6 +12,17 @@ target_link_libraries(test_sim_controller PRIVATE
 )
 add_test(NAME test_sim_controller COMMAND test_sim_controller)
 
+# ── C++ unit tests for ScenarioBridge ──────────────────────────────────────
+add_executable(test_scenario_bridge
+    cpp/test_scenario_bridge.cpp
+)
+target_link_libraries(test_scenario_bridge PRIVATE
+    cutesim_viewer_lib
+    GTest::gtest
+    Qt6::Test
+)
+add_test(NAME test_scenario_bridge COMMAND test_scenario_bridge)
+
 # ── QML component tests ────────────────────────────────────────────────────
 qt_add_executable(tst_viewer_qml
     qml/main.cpp

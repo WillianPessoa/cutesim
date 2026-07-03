@@ -30,8 +30,6 @@ SimController::~SimController()
 
 void SimController::connectToServer(const QString &host, quint16 port)
 {
-    m_simDone = false;
-    emit connectionChanged();
     m_client->connectToServer(host, port);
 }
 
@@ -74,6 +72,66 @@ void SimController::launch(const QVariantMap &params)
 
 /* ── Private: launch ────────────────────────────────────────────────── */
 
+QStringList SimController::buildArgs(const QVariantMap &params)
+{
+    const int port = params.value("port", 9000).toInt();
+    QStringList args;
+
+    const QString scn = params.value("scenarioFile").toString();
+    if (!scn.isEmpty()) {
+        /* Scenario mode: the file supplies the whole config; file values take
+           precedence over flags in the binary anyway. */
+        args << scn << QString("--serve=%1").arg(port);
+        return args;
+    }
+
+    args << QString("--process-count=%1").arg(params.value("processes",  5).toInt())
+         << QString("--quantum-hi=%1").arg(params.value("quantumHi",  3).toInt())
+         << QString("--quantum-lo=%1").arg(params.value("quantumLo",  6).toInt())
+         << QString("--p-io=%1").arg(params.value("pIo",  0).toInt())
+         << QString("--service-duration=%1-%2")
+                .arg(params.value("serviceMin",  5).toInt())
+                .arg(params.value("serviceMax", 15).toInt())
+         << QString("--seed=%1").arg(params.value("seed", 42).toInt());
+
+    const QString arrival = params.value("arrivalMode", "batch").toString();
+    if (arrival == "bernoulli" || arrival == "geometric") {
+        args << "--arrival-mode=bernoulli"
+             << QString("--arrival-rate=%1").arg(params.value("arrivalRate", 20).toInt());
+    } else if (arrival == "poisson") {
+        args << "--arrival-mode=poisson"
+             << QString("--arrival-lambda=%1").arg(params.value("arrivalLambda", 0.5).toDouble());
+    } else if (arrival == "uniform") {
+        args << "--arrival-mode=uniform"
+             << QString("--arrival-interval=%1").arg(params.value("arrivalInterval", 3).toInt());
+    }
+
+    /* Device split: pass disk + tape only — the binary assigns the remainder
+       to the printer, so the three always sum to 100. */
+    if (params.contains("pDisk") && params.contains("pTape")) {
+        args << QString("--p-disk=%1").arg(params.value("pDisk").toInt())
+             << QString("--p-tape=%1").arg(params.value("pTape").toInt());
+    }
+
+    const struct { const char *minKey, *maxKey, *modeKey, *durFlag, *modeFlag; } devs[] = {
+        { "diskMin",    "diskMax",    "diskMode",    "--disk-duration",    "--io-mode-disk"    },
+        { "tapeMin",    "tapeMax",    "tapeMode",    "--tape-duration",    "--io-mode-tape"    },
+        { "printerMin", "printerMax", "printerMode", "--printer-duration", "--io-mode-printer" },
+    };
+    for (const auto &d : devs) {
+        if (params.contains(d.minKey) && params.contains(d.maxKey)) {
+            args << QString("%1=%2-%3").arg(d.durFlag)
+                        .arg(params.value(d.minKey).toInt())
+                        .arg(params.value(d.maxKey).toInt());
+        }
+        if (params.contains(d.modeKey))
+            args << QString("%1=%2").arg(d.modeFlag, params.value(d.modeKey).toString());
+    }
+
+    args << QString("--serve=%1").arg(port);
+    return args;
+}
+
 void SimController::launchBinary(const QVariantMap &params)
 {
     QString bin = findBinary();
@@ -95,23 +153,8 @@ void SimController::launchBinary(const QVariantMap &params)
         qDebug().noquote() << "[rr-feedback]" << m_process->readAllStandardError().trimmed();
     });
 
-    int    processes  = params.value("processes",  5).toInt();
-    int    quantumHi  = params.value("quantumHi",  3).toInt();
-    int    quantumLo  = params.value("quantumLo",  6).toInt();
-    int    pIo        = params.value("pIo",         0).toInt();
-    int    serviceMin = params.value("serviceMin",  5).toInt();
-    int    serviceMax = params.value("serviceMax", 15).toInt();
-    int    seed       = params.value("seed",       42).toInt();
-    int    port       = params.value("port",     9000).toInt();
-
-    QStringList args;
-    args << QString("--process-count=%1").arg(processes)
-         << QString("--quantum-hi=%1").arg(quantumHi)
-         << QString("--quantum-lo=%1").arg(quantumLo)
-         << QString("--p-io=%1").arg(pIo)
-         << QString("--service-duration=%1-%2").arg(serviceMin).arg(serviceMax)
-         << QString("--seed=%1").arg(seed)
-         << QString("--serve=%1").arg(port);
+    const int   port = params.value("port", 9000).toInt();
+    QStringList args = buildArgs(params);
 
     m_launching = true;
     emit launchStateChanged();
@@ -157,7 +200,6 @@ QString SimController::findBinary()
 void SimController::onConnected()
 {
     m_connected   = true;
-    m_simDone     = false;
     m_needsLaunch = false;
     emit connectionChanged();
     emit launchStateChanged();
@@ -167,7 +209,6 @@ void SimController::onConnected()
 void SimController::onDisconnected()
 {
     m_connected = false;
-    m_simDone   = true;
     emit connectionChanged();
 }
 
@@ -184,8 +225,23 @@ void SimController::onClientError(const QString &msg)
 
 void SimController::onSnapshot(const QJsonObject &snap, const QString &raw)
 {
+    /* A snapshot for a tick we already processed (e.g. a "step" answered after
+       the sim finished, or a "status" query) must not append to the histories,
+       or the Gantt/sparklines grow phantom ticks. State overwrites are
+       idempotent and stay unconditional.
+
+       Tick 0 is the pre-simulation state (the reply to "reset"): nothing ran
+       yet, so recording it would paint a fake idle tick at the start of the
+       Gantt. The first simulated tick is 1. */
+    const int  tick    = snap["tick"].toInt();
+    const bool newTick = !m_hasSnapshot || tick != m_tick;
+    const bool record  = newTick && tick > 0;
+    if (newTick)
+        m_prevEvents = m_events; /* events of the previous tick */
+
+    m_hasSnapshot = true;
     m_rawSnapshot = raw;
-    m_tick        = snap["tick"].toInt();
+    m_tick        = tick;
     m_done        = snap["done"].toBool();
 
     /* ── CPU ─────────────────────────────────────────────────────────── */
@@ -193,14 +249,23 @@ void SimController::onSnapshot(const QJsonObject &snap, const QString &raw)
     m_cpu.clear();
     if (!cpuVal.isNull() && !cpuVal.isUndefined()) {
         QJsonObject c    = cpuVal.toObject();
-        m_cpu["pid"]          = c["pid"].toInt();
-        m_cpu["remaining"]    = c["remaining"].toInt();
-        m_cpu["quantum_used"] = c["quantum_used"].toInt();
-        m_cpu["quantum_max"]  = c["quantum_max"].toInt();
-        m_cpu["queue"]        = c["queue"].toString();
-        appendCapped(m_ganttHistory, c["pid"].toInt());
-        appendCapped(m_cpuHistory,   c["pid"].toInt());
-    } else {
+        m_cpu["pid"]            = c["pid"].toInt();
+        m_cpu["remaining"]      = c["remaining"].toInt();
+        m_cpu["quantum_used"]   = c["quantum_used"].toInt();
+        m_cpu["quantum_max"]    = c["quantum_max"].toInt();
+        m_cpu["queue"]          = c["queue"].toString();
+        m_cpu["burst_remaining"] = c["burst_remaining"].toInt(-1);
+        if (c.contains("ghost"))  m_cpu["ghost"]  = c["ghost"].toString();
+        if (c.contains("device")) m_cpu["device"] = c["device"].toString();
+        /* An io_start ghost did not consume a CPU tick (Model A) — the CPU
+           card shows where the process went, but the histories stay truthful
+           and record the tick as idle. */
+        const bool ranThisTick = c["ghost"].toString() != QLatin1String("io_start");
+        if (record) {
+            appendCapped(m_ganttHistory, ranThisTick ? c["pid"].toInt() : -1);
+            appendCapped(m_cpuHistory,   ranThisTick ? c["pid"].toInt() : 0);
+        }
+    } else if (record) {
         appendCapped(m_ganttHistory, -1);
         appendCapped(m_cpuHistory,   0);
     }
@@ -228,9 +293,11 @@ void SimController::onSnapshot(const QJsonObject &snap, const QString &raw)
     m_stats["avg_waiting"]     = st["avg_waiting"].toDouble();
     m_stats["avg_response"]    = st["avg_response"].toDouble();
 
-    appendCapped(m_utilHistory,       cpuUtil);
-    appendCapped(m_turnaroundHistory, avgTa);
-    appendCapped(m_throughputHistory, throughput);
+    if (record) {
+        appendCapped(m_utilHistory,       cpuUtil);
+        appendCapped(m_turnaroundHistory, avgTa);
+        appendCapped(m_throughputHistory, throughput);
+    }
 
     /* ── Events ──────────────────────────────────────────────────────── */
     m_events.clear();
@@ -246,6 +313,8 @@ void SimController::onSnapshot(const QJsonObject &snap, const QString &raw)
         if (e.contains("quantum_max"))  m["quantum_max"]  = e["quantum_max"].toInt();
         m_events.append(m);
     }
+    if (record)
+        appendCapped(m_eventsHistory, m_events);
 
     /* ── allProcesses + totalProcessCount ───────────────────────────── */
     {
@@ -317,13 +386,17 @@ void SimController::clearState()
     m_highQueue.clear(); m_lowQueue.clear();
     m_diskQueue.clear(); m_tapeQueue.clear(); m_printerQueue.clear();
     m_finished.clear(); m_stats.clear(); m_events.clear();
+    m_prevEvents.clear();
     m_rawSnapshot.clear();
     m_ganttHistory.clear(); m_allProcesses.clear();
-    m_cpuHistory.clear(); m_utilHistory.clear();
+    m_cpuHistory.clear(); m_eventsHistory.clear(); m_utilHistory.clear();
     m_turnaroundHistory.clear(); m_throughputHistory.clear();
     m_firstSeenTick.clear();
     m_totalProcessCount = 0;
-    m_connected = false; m_simDone = false;
+    m_hasSnapshot = false;
+    /* m_connected is deliberately untouched: connection state belongs to the
+       socket (onConnected/onDisconnected), and reset() clears sim state while
+       the connection stays open. */
 }
 
 QVariantList SimController::parseProcessArray(const QJsonArray &arr)

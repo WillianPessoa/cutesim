@@ -9,6 +9,7 @@ GlassCard {
     property color qColor: Theme.accent
     property string kind: "cpu"        // "cpu" → {pid, remaining}; "io" → {pid, io_remaining}
     property var items: []
+    property var highlightPids: []     // PIDs inserted into this queue this tick
 
     ColumnLayout {
         anchors.fill: parent
@@ -78,6 +79,7 @@ GlassCard {
                     delegate: QueueChip {
                         chipColor: root.qColor
                         pid: modelData.pid
+                        highlighted: root.highlightPids.indexOf(modelData.pid) >= 0
                         meta: root.kind === "io"
                               ? ("io:" + (modelData.io_remaining !== undefined
                                           ? modelData.io_remaining : 0) + "t")

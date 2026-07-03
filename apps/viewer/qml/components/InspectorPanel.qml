@@ -9,6 +9,14 @@ GlassCard {
     property string rawSnapshot: ""
     property var events: []
 
+    // rawSnapshot pretty-printed with 2-space indentation; falls back to the
+    // raw string when it is not valid JSON.
+    readonly property string prettySnapshot: {
+        if (!rawSnapshot) return ""
+        try { return JSON.stringify(JSON.parse(rawSnapshot), null, 2) }
+        catch (e) { return rawSnapshot }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 12
@@ -127,14 +135,17 @@ GlassCard {
             clip: true
             ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-            Text {
-                width: parent.width
-                text: root.rawSnapshot || "(none)"
+            TextArea {
+                readOnly: true
+                text: root.prettySnapshot || "(none)"
                 color: Theme.textDim
                 font.family: "Menlo, Monaco, Courier New, monospace"
                 font.pixelSize: 9
-                wrapMode: Text.WrapAnywhere
-                lineHeight: 1.4
+                wrapMode: TextEdit.WrapAnywhere
+                selectByMouse: true
+                background: null
+                topPadding: 0
+                leftPadding: 0
             }
         }
     }

@@ -8,34 +8,34 @@ GlassCard {
     implicitWidth: 340
     implicitHeight: 188
 
-    // cpu: { pid, remaining, quantum_used, quantum_max, queue } or empty/null when idle
+    // cpu: { pid, remaining, quantum_used, quantum_max, queue } or empty/null when idle.
+    // pid can legitimately be 0, so idleness is "no pid field", not "pid falsy".
     property var cpu: null
-    property bool isIdle: !cpu || !cpu.pid
+    property bool isIdle: !cpu || cpu.pid === undefined
 
-    // flash: { pid, used, max } — final state of preempted process this tick
-    property var flash: null
+    // "" | "preempted" | "completed" | "io_disk" | "io_tape" | "io_printer" —
+    // the process shown left the CPU this tick; the snapshot keeps it here so
+    // the viewer can tag where it went instead of rendering a bare idle.
+    property string ghost: ""
 
     // Last N CPU pids (0 = idle), used by the history strip
     property var history: []
 
-    readonly property bool fromHigh: {
-        if (!isIdle)            return cpu.queue   === "high"
-        if (flash && flash.pid) return true          // preempted from high or low; treat as last queue
-        return false
-    }
+    readonly property string ghostLabel:
+        ghost === "preempted"  ? "→ low queue"     :
+        ghost === "completed"  ? "finished ✓"      :
+        ghost === "io_disk"    ? "→ disk queue"    :
+        ghost === "io_tape"    ? "→ tape queue"    :
+        ghost === "io_printer" ? "→ printer queue" : ""
+
+    readonly property bool fromHigh: !isIdle && cpu.queue === "high"
     readonly property color queueColor: fromHigh ? Theme.qHigh : Theme.qLow
     accentStripe: isIdle ? "transparent" : queueColor
 
-    readonly property int displayQuantumUsed: {
-        if (!isIdle) return cpu.quantum_used
-        if (flash && flash.pid) return flash.used
-        return 0
-    }
-    readonly property int displayQuantumMax: {
-        if (!isIdle) return cpu.quantum_max
-        if (flash && flash.pid) return flash.max
-        return 1
-    }
+    readonly property int displayQuantumUsed: isIdle ? 0 : cpu.quantum_used
+    readonly property int displayQuantumMax:  isIdle ? 1 : cpu.quantum_max
+    readonly property int burstRemaining: (!isIdle && cpu.burst_remaining !== undefined)
+                                          ? cpu.burst_remaining : -1
 
     ColumnLayout {
         anchors.fill: parent
@@ -54,6 +54,19 @@ GlassCard {
                 font.letterSpacing: 1.6
             }
             Item { Layout.fillWidth: true }
+            Text {
+                visible: root.ghostLabel.length > 0
+                text: root.ghostLabel.toUpperCase()
+                color: root.ghost === "completed"  ? Theme.accentAlt
+                     : root.ghost === "io_disk"    ? Theme.qDisk
+                     : root.ghost === "io_tape"    ? Theme.qTape
+                     : root.ghost === "io_printer" ? Theme.qPrint
+                                                   : Theme.warning
+                font.family: Theme.fontFamily
+                font.pixelSize: 10
+                font.weight: Font.Bold
+                font.letterSpacing: 1.4
+            }
             Text {
                 visible: !root.isIdle
                 text: root.fromHigh ? "HIGH QUEUE" : "LOW QUEUE"
@@ -88,28 +101,51 @@ GlassCard {
                 font.letterSpacing: -1.6
             }
             Item { Layout.fillWidth: true }
-            ColumnLayout {
+            Row {
                 visible: !root.isIdle
-                spacing: 2
-                Text {
-                    text: "remaining"
-                    color: Theme.textDim
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                    font.letterSpacing: 0.6
+                spacing: 16
+
+                ColumnLayout {
+                    spacing: 2
+                    Text {
+                        text: "quantum"
+                        color: Theme.textDim
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                        font.letterSpacing: 0.6
+                    }
+                    Text {
+                        text: root.isIdle ? "" : (root.cpu.remaining + "t")
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 13
+                        font.weight: Font.Bold
+                    }
                 }
-                Text {
-                    text: root.isIdle ? "" : (root.cpu.remaining + " ticks")
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 13
-                    font.weight: Font.Bold
+
+                ColumnLayout {
+                    visible: root.burstRemaining >= 0
+                    spacing: 2
+                    Text {
+                        text: "service"
+                        color: Theme.textDim
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                        font.letterSpacing: 0.6
+                    }
+                    Text {
+                        text: root.burstRemaining + "t"
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 13
+                        font.weight: Font.Bold
+                    }
                 }
             }
         }
 
         ColumnLayout {
-            visible: !root.isIdle || (root.flash !== null && root.flash !== undefined && root.flash.pid > 0)
+            visible: !root.isIdle
             Layout.fillWidth: true
             spacing: 6
             RowLayout {

@@ -132,7 +132,11 @@ QVariantList printerQueue
 QVariantList finished     // [{pid, arrival_tick, finish_tick, ...stats}]
 QVariantMap  stats        // {cpu_utilization, throughput, avg_turnaround, ...}
 QVariantList events       // [{type, pid, ...}]  — from snapshot.events
+QVariantList prevEvents   // previous tick's events[] — a preempted process only
+                          // lands in the low queue one tick after its event,
+                          // so its queue highlight is driven by prevEvents
 QString      rawSnapshot  // last raw JSON line — for InspectorPanel
+bool         done         // snapshot.done — the sim finished (independent of the socket)
 
 // Histories (for sparklines and Gantt)
 QVariantList cpuHistory        // [pid] per tick (0 = idle)
@@ -144,8 +148,9 @@ QVariantList turnaroundHistory
 QVariantList throughputHistory
 
 // Connection state (NOTIFY connectionChanged)
+// Socket state only — "sim finished" is the `done` property above. Conflating
+// the two (the old simDone) broke the status chip and the reset flow.
 bool connected
-bool simDone
 
 // Launch state (NOTIFY launchStateChanged)
 bool        needsLaunch

@@ -16,7 +16,10 @@
 
    Key simplification over the old SchedulerController: the CuteSim snapshot
    already includes an events[] array encoding all transitions (arrived,
-   scheduled, preempted, io_start, io_return, completed). No m_prev* diffs. */
+   scheduled, preempted, io_start, io_return, completed). No heuristic state
+   diffs — prevEvents is just the previous tick's events[] verbatim, kept so
+   the UI can highlight a preempted process when it lands in the low queue
+   one tick after its "preempted" event. */
 class SimController : public QObject
 {
     Q_OBJECT
@@ -32,6 +35,7 @@ class SimController : public QObject
     Q_PROPERTY(QVariantList finished      READ finished      NOTIFY stateUpdated)
     Q_PROPERTY(QVariantMap  stats         READ stats         NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList events        READ events        NOTIFY stateUpdated)
+    Q_PROPERTY(QVariantList prevEvents    READ prevEvents    NOTIFY stateUpdated)
     Q_PROPERTY(QString      rawSnapshot   READ rawSnapshot   NOTIFY stateUpdated)
     Q_PROPERTY(bool         done          READ isDone        NOTIFY stateUpdated)
 
@@ -40,13 +44,13 @@ class SimController : public QObject
     Q_PROPERTY(QVariantList allProcesses      READ allProcesses      NOTIFY stateUpdated)
     Q_PROPERTY(int          totalProcessCount READ totalProcessCount NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList cpuHistory        READ cpuHistory        NOTIFY stateUpdated)
+    Q_PROPERTY(QVariantList eventsHistory     READ eventsHistory     NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList utilHistory       READ utilHistory       NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList turnaroundHistory READ turnaroundHistory NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList throughputHistory READ throughputHistory NOTIFY stateUpdated)
 
     /* ── Connection state ─────────────────────────────────────────────── */
     Q_PROPERTY(bool connected  READ isConnected  NOTIFY connectionChanged)
-    Q_PROPERTY(bool simDone    READ isSimDone    NOTIFY connectionChanged)
 
     /* ── Launch state ─────────────────────────────────────────────────── */
     Q_PROPERTY(bool        needsLaunch READ needsLaunch NOTIFY launchStateChanged)
@@ -68,6 +72,7 @@ public:
     QVariantList finished()      const { return m_finished; }
     QVariantMap  stats()         const { return m_stats; }
     QVariantList events()        const { return m_events; }
+    QVariantList prevEvents()    const { return m_prevEvents; }
     QString      rawSnapshot()   const { return m_rawSnapshot; }
     bool         isDone()        const { return m_done; }
 
@@ -76,16 +81,24 @@ public:
     QVariantList allProcesses()      const { return m_allProcesses; }
     int          totalProcessCount() const { return m_totalProcessCount; }
     QVariantList cpuHistory()        const { return m_cpuHistory; }
+    QVariantList eventsHistory()     const { return m_eventsHistory; }
     QVariantList utilHistory()       const { return m_utilHistory; }
     QVariantList turnaroundHistory() const { return m_turnaroundHistory; }
     QVariantList throughputHistory() const { return m_throughputHistory; }
 
     /* ── Connection / launch getters ──────────────────────────────────── */
     bool        isConnected() const { return m_connected; }
-    bool        isSimDone()   const { return m_simDone; }
     bool        needsLaunch() const { return m_needsLaunch; }
     bool        isLaunching() const { return m_launching; }
     QVariantMap lastParams()  const { return m_lastParams; }
+
+    /* Translate launch params into rr-feedback argv. Public + static so tests
+       can lock the mapping without spawning a process.
+       params["scenarioFile"] non-empty → scenario mode: the file supplies the
+       whole config and only --serve is added. Otherwise random-workload flags
+       are emitted (arrival mode, device split, durations, io modes included
+       when present). */
+    static QStringList buildArgs(const QVariantMap &params);
 
 public slots:
     Q_INVOKABLE void connectToServer(const QString &host = "127.0.0.1", quint16 port = 9000);
@@ -130,14 +143,17 @@ private:
     QVariantList m_finished;
     QVariantMap  m_stats;
     QVariantList m_events;
+    QVariantList m_prevEvents;   /* events of the previous tick */
     QString      m_rawSnapshot;
     bool         m_done          = false;
+    bool         m_hasSnapshot   = false;
 
     /* ── Histories ────────────────────────────────────────────────────── */
     QVariantList m_ganttHistory;
     QVariantList m_allProcesses;
     int          m_totalProcessCount = 0;
     QVariantList m_cpuHistory;
+    QVariantList m_eventsHistory;  /* one entry per recorded tick: that tick's events[] */
     QVariantList m_utilHistory;
     QVariantList m_turnaroundHistory;
     QVariantList m_throughputHistory;
@@ -145,7 +161,6 @@ private:
 
     /* ── Connection / launch ──────────────────────────────────────────── */
     bool        m_connected   = false;
-    bool        m_simDone     = false;
     bool        m_needsLaunch = true;
     bool        m_launching   = false;
     QVariantMap m_lastParams;

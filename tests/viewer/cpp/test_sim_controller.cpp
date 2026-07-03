@@ -297,6 +297,193 @@ TEST_F(SimControllerTest, RawSnapshotStored)
     EXPECT_TRUE(ctrl.rawSnapshot().contains("tick"));
 }
 
+TEST_F(SimControllerTest, DuplicateTickSnapshotDoesNotAppendHistory)
+{
+    // A repeated snapshot for the same tick (step answered after done,
+    // status query) must not grow the histories with phantom ticks.
+    feedSnapshot(ctrl, baseSnap(1));
+    feedSnapshot(ctrl, baseSnap(1));
+    feedSnapshot(ctrl, baseSnap(1));
+    EXPECT_EQ(ctrl.ganttHistory().size(), 1);
+    EXPECT_EQ(ctrl.utilHistory().size(),  1);
+
+    feedSnapshot(ctrl, baseSnap(2));
+    EXPECT_EQ(ctrl.ganttHistory().size(), 2);
+}
+
+TEST_F(SimControllerTest, TickZeroSnapshotNotRecordedInHistories)
+{
+    // The reply to "reset" is a tick-0 snapshot: pre-simulation state, cpu
+    // null. Recording it would paint a fake idle tick at the start of the
+    // Gantt after every restart.
+    feedSnapshot(ctrl, baseSnap(0));
+    EXPECT_EQ(ctrl.tick(), 0);
+    EXPECT_TRUE(ctrl.ganttHistory().isEmpty());
+    EXPECT_TRUE(ctrl.cpuHistory().isEmpty());
+    EXPECT_TRUE(ctrl.utilHistory().isEmpty());
+
+    feedSnapshot(ctrl, baseSnap(1));
+    EXPECT_EQ(ctrl.ganttHistory().size(), 1);
+}
+
+TEST_F(SimControllerTest, IoGhostTickRecordsIdleInGantt)
+{
+    /* BUG-16: an io_start ghost keeps the departing process on the CPU card,
+       but no CPU tick was consumed (Model A) — histories must record idle. */
+    QJsonObject cpu;
+    cpu["pid"]          = 4;
+    cpu["remaining"]    = 2;
+    cpu["quantum_used"] = 1;
+    cpu["quantum_max"]  = 3;
+    cpu["queue"]        = "high";
+    cpu["ghost"]        = "io_start";
+    cpu["device"]       = "disk";
+
+    QJsonObject s = baseSnap(1);
+    s["cpu"] = cpu;
+    feedSnapshot(ctrl, s);
+
+    EXPECT_EQ(ctrl.cpu()["ghost"].toString(),  "io_start");
+    EXPECT_EQ(ctrl.cpu()["device"].toString(), "disk");
+    ASSERT_EQ(ctrl.ganttHistory().size(), 1);
+    EXPECT_EQ(ctrl.ganttHistory().last().toInt(), -1);
+    EXPECT_EQ(ctrl.cpuHistory().last().toInt(),    0);
+}
+
+TEST_F(SimControllerTest, PreemptedGhostTickStillRecordsPid)
+{
+    /* A preempted (or completed) ghost DID run its tick — histories keep it. */
+    QJsonObject cpu;
+    cpu["pid"]          = 4;
+    cpu["remaining"]    = 0;
+    cpu["quantum_used"] = 3;
+    cpu["quantum_max"]  = 3;
+    cpu["queue"]        = "high";
+    cpu["ghost"]        = "preempted";
+
+    QJsonObject s = baseSnap(1);
+    s["cpu"] = cpu;
+    feedSnapshot(ctrl, s);
+
+    ASSERT_EQ(ctrl.ganttHistory().size(), 1);
+    EXPECT_EQ(ctrl.ganttHistory().last().toInt(), 4);
+    EXPECT_EQ(ctrl.cpuHistory().last().toInt(),   4);
+}
+
+TEST_F(SimControllerTest, EventsHistoryAccumulatesPerRecordedTick)
+{
+    QJsonObject s1 = baseSnap(1);
+    s1["events"] = QJsonArray{ QJsonObject{{"type", "arrived"}, {"pid", 1}} };
+    feedSnapshot(ctrl, s1);
+
+    QJsonObject s2 = baseSnap(2);
+    s2["events"] = QJsonArray{
+        QJsonObject{{"type", "scheduled"}, {"pid", 1}, {"queue", "high"}}
+    };
+    feedSnapshot(ctrl, s2);
+
+    ASSERT_EQ(ctrl.eventsHistory().size(), 2);
+    QVariantList t1 = ctrl.eventsHistory().at(0).toList();
+    ASSERT_EQ(t1.size(), 1);
+    EXPECT_EQ(t1.first().toMap()["type"].toString(), "arrived");
+
+    /* duplicate tick and tick 0 are not recorded */
+    feedSnapshot(ctrl, s2);
+    feedSnapshot(ctrl, baseSnap(0));
+    EXPECT_EQ(ctrl.eventsHistory().size(), 2);
+}
+
+TEST_F(SimControllerTest, BuildArgsScenarioModePassesFileAndServeOnly)
+{
+    QVariantMap p;
+    p["scenarioFile"] = "/tmp/demo.scn";
+    p["port"]         = 9100;
+    /* random params present must be ignored — the file wins */
+    p["processes"]    = 9;
+
+    QStringList args = SimController::buildArgs(p);
+    EXPECT_EQ(args, (QStringList{ "/tmp/demo.scn", "--serve=9100" }));
+}
+
+TEST_F(SimControllerTest, BuildArgsRandomDefaults)
+{
+    QStringList args = SimController::buildArgs({});
+    EXPECT_TRUE(args.contains("--process-count=5"));
+    EXPECT_TRUE(args.contains("--quantum-hi=3"));
+    EXPECT_TRUE(args.contains("--quantum-lo=6"));
+    EXPECT_TRUE(args.contains("--p-io=0"));
+    EXPECT_TRUE(args.contains("--service-duration=5-15"));
+    EXPECT_TRUE(args.contains("--seed=42"));
+    EXPECT_TRUE(args.contains("--serve=9000"));
+    /* optional groups are omitted when their keys are absent */
+    EXPECT_FALSE(args.filter("--arrival-mode").size() > 0);
+    EXPECT_FALSE(args.filter("--p-disk").size() > 0);
+    EXPECT_FALSE(args.filter("--disk-duration").size() > 0);
+    EXPECT_FALSE(args.filter("--io-mode-disk").size() > 0);
+}
+
+TEST_F(SimControllerTest, BuildArgsRandomFullParams)
+{
+    QVariantMap p;
+    p["arrivalMode"] = "bernoulli";
+    p["arrivalRate"] = 25;
+    p["pDisk"]       = 50;
+    p["pTape"]       = 30;
+    p["diskMin"]     = 2;   p["diskMax"]    = 6;
+    p["tapeMin"]     = 8;   p["tapeMax"]    = 8;
+    p["diskMode"]    = "queue";
+    p["printerMode"] = "concurrent";
+
+    QStringList args = SimController::buildArgs(p);
+    EXPECT_TRUE(args.contains("--arrival-mode=bernoulli"));
+    EXPECT_TRUE(args.contains("--arrival-rate=25"));
+    EXPECT_TRUE(args.contains("--p-disk=50"));
+    EXPECT_TRUE(args.contains("--p-tape=30"));
+    EXPECT_TRUE(args.contains("--disk-duration=2-6"));
+    EXPECT_TRUE(args.contains("--tape-duration=8-8"));
+    EXPECT_TRUE(args.contains("--io-mode-disk=queue"));
+    EXPECT_TRUE(args.contains("--io-mode-printer=concurrent"));
+    /* printer duration keys absent → flag omitted */
+    EXPECT_FALSE(args.filter("--printer-duration").size() > 0);
+}
+
+TEST_F(SimControllerTest, BuildArgsArrivalPoissonAndUniform)
+{
+    QVariantMap p;
+    p["arrivalMode"]   = "poisson";
+    p["arrivalLambda"] = 0.5;
+    QStringList args = SimController::buildArgs(p);
+    EXPECT_TRUE(args.contains("--arrival-mode=poisson"));
+    EXPECT_TRUE(args.contains("--arrival-lambda=0.5"));
+
+    p.clear();
+    p["arrivalMode"]     = "uniform";
+    p["arrivalInterval"] = 4;
+    args = SimController::buildArgs(p);
+    EXPECT_TRUE(args.contains("--arrival-mode=uniform"));
+    EXPECT_TRUE(args.contains("--arrival-interval=4"));
+}
+
+TEST_F(SimControllerTest, PrevEventsHoldPreviousTick)
+{
+    QJsonObject s1 = baseSnap(1);
+    s1["events"] = QJsonArray{
+        QJsonObject{{"type", "preempted"}, {"pid", 3},
+                    {"quantum_used", 3}, {"quantum_max", 3}}
+    };
+    feedSnapshot(ctrl, s1);
+    EXPECT_TRUE(ctrl.prevEvents().isEmpty());
+
+    feedSnapshot(ctrl, baseSnap(2));
+    ASSERT_EQ(ctrl.prevEvents().size(), 1);
+    EXPECT_EQ(ctrl.prevEvents().first().toMap()["type"].toString(), "preempted");
+    EXPECT_EQ(ctrl.prevEvents().first().toMap()["pid"].toInt(), 3);
+
+    // A repeated tick 2 must not shift the events again
+    feedSnapshot(ctrl, baseSnap(2));
+    EXPECT_EQ(ctrl.prevEvents().size(), 1);
+}
+
 /* ── main ────────────────────────────────────────────────────────────── */
 int main(int argc, char **argv)
 {
