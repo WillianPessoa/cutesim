@@ -1,3 +1,5 @@
+#include <csignal>
+
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -13,6 +15,11 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     app.setApplicationName("CuteSim");
     app.setOrganizationName("cutesim");
+
+    /* BUG-24: exit cleanly on SIGINT/SIGTERM so destructors run and the
+       spawned rr-feedback dies with the viewer instead of lingering. */
+    std::signal(SIGINT,  [](int) { QCoreApplication::quit(); });
+    std::signal(SIGTERM, [](int) { QCoreApplication::quit(); });
 
     SimController  controller;
     ScenarioBridge scenarioBridge;

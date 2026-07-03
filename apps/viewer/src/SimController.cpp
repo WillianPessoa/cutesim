@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonValue>
+#include <QRandomGenerator>
 #include <QTimer>
 #include <algorithm>
 
@@ -153,8 +154,16 @@ void SimController::launchBinary(const QVariantMap &params)
         qDebug().noquote() << "[rr-feedback]" << m_process->readAllStandardError().trimmed();
     });
 
-    const int   port = params.value("port", 9000).toInt();
-    QStringList args = buildArgs(params);
+    /* BUG-24: a fixed port meant that if an old rr-feedback survived (viewer
+       killed without cleanup), the new server failed to bind silently and the
+       viewer connected to the STALE simulation — mid-run state, idle gantt.
+       A fresh random port per launch never collides with leftovers. */
+    QVariantMap p = params;
+    if (!p.contains("port"))
+        p["port"] = 20000 + int(QRandomGenerator::global()->bounded(40000));
+
+    const int   port = p.value("port").toInt();
+    QStringList args = buildArgs(p);
 
     m_launching = true;
     emit launchStateChanged();
