@@ -10,15 +10,41 @@ GlassCard {
     property var events: []
     property var params: null            // SimController.lastParams
     property var bridge: null            // ScenarioBridge (to read .scn files)
+    property var eventsHistory: []       // events[] per recorded tick
+    property var rawHistory: []          // raw JSON line per recorded tick
 
     property string view: "snapshot"     // "snapshot" | "config"
 
-    // rawSnapshot pretty-printed with 2-space indentation; falls back to the
-    // raw string when it is not valid JSON.
+    /* ── Time travel ────────────────────────────────────────────────────
+       live: follow the latest snapshot (default). Stepping back browses the
+       recorded history; index = tick - 1 (tick 0 is never recorded). */
+    property bool live: true
+    property int  histIndex: 0
+
+    readonly property int  histCount: rawHistory.length
+    readonly property bool browsing: !live && histCount > 0
+    readonly property int  shownIndex: Math.max(0, Math.min(histIndex, histCount - 1))
+    readonly property var  shownEvents: browsing ? (eventsHistory[shownIndex] || []) : events
+    readonly property string shownRaw:  browsing ? (rawHistory[shownIndex]   || "") : rawSnapshot
+
+    function stepBack() {
+        if (histCount === 0) return
+        if (live) { live = false; histIndex = Math.max(0, histCount - 2) }
+        else      histIndex = Math.max(0, shownIndex - 1)
+    }
+    function stepForward() {
+        if (!browsing) return
+        if (shownIndex + 1 >= histCount) live = true
+        else histIndex = shownIndex + 1
+    }
+    function goLive() { live = true }
+
+    // shown snapshot pretty-printed with 2-space indentation; falls back to
+    // the raw string when it is not valid JSON.
     readonly property string prettySnapshot: {
-        if (!rawSnapshot) return ""
-        try { return JSON.stringify(JSON.parse(rawSnapshot), null, 2) }
-        catch (e) { return rawSnapshot }
+        if (!shownRaw) return ""
+        try { return JSON.stringify(JSON.parse(shownRaw), null, 2) }
+        catch (e) { return shownRaw }
     }
 
     // What the running simulation was launched with: the scenario file
@@ -75,24 +101,102 @@ GlassCard {
             }
             Item { Layout.fillWidth: true }
             Text {
-                text: root.events.length + " event" + (root.events.length !== 1 ? "s" : "")
-                color: root.events.length > 0 ? Theme.accent : Theme.textDim
+                text: root.shownEvents.length + " event" + (root.shownEvents.length !== 1 ? "s" : "")
+                color: root.shownEvents.length > 0 ? Theme.accent : Theme.textDim
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
                 font.weight: Font.Medium
             }
         }
 
+        /* History navigation — step through recorded snapshots */
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            visible: root.histCount > 0
+
+            component NavBtn: Rectangle {
+                property string glyph: ""
+                property bool enabledState: true
+                signal tapped()
+                width: 22; height: 20; radius: 5
+                color: navHov.hovered && enabledState ? Theme.hover : Theme.cardBg
+                border.width: 1
+                border.color: Theme.divider
+                opacity: enabledState ? 1.0 : 0.35
+                Text {
+                    anchors.centerIn: parent
+                    text: parent.glyph
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    font.weight: Font.Bold
+                }
+                HoverHandler {
+                    id: navHov
+                    cursorShape: parent.enabledState ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
+                TapHandler { onTapped: if (parent.enabledState) parent.tapped() }
+            }
+
+            NavBtn {
+                glyph: "‹"
+                enabledState: root.live ? root.histCount > 1 : root.shownIndex > 0
+                onTapped: root.stepBack()
+            }
+            NavBtn {
+                glyph: "›"
+                enabledState: root.browsing
+                onTapped: root.stepForward()
+            }
+
+            Text {
+                text: root.browsing
+                      ? "tick " + (root.shownIndex + 1) + " / " + root.histCount
+                      : "live · " + root.histCount + " tick" + (root.histCount !== 1 ? "s" : "")
+                color: root.browsing ? Theme.warning : Theme.textDim
+                font.family: Theme.fontFamily
+                font.pixelSize: 10
+                font.weight: root.browsing ? Font.Bold : Font.Normal
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Rectangle {
+                visible: root.browsing
+                width: liveTxt.implicitWidth + 14
+                height: 20
+                radius: 5
+                color: liveHov.hovered
+                       ? Theme.accent
+                       : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12)
+                border.width: 1
+                border.color: Theme.accentGlow
+                Text {
+                    id: liveTxt
+                    anchors.centerIn: parent
+                    text: "LIVE"
+                    color: liveHov.hovered ? "#000" : Theme.accent
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.Bold
+                    font.letterSpacing: 1.2
+                }
+                HoverHandler { id: liveHov; cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: root.goLive() }
+            }
+        }
+
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-        // Events this tick
+        // Events of the shown tick
         Column {
             Layout.fillWidth: true
             spacing: 4
-            visible: root.events.length > 0
+            visible: root.shownEvents.length > 0
 
             Repeater {
-                model: root.events
+                model: root.shownEvents
                 delegate: RowLayout {
                     width: parent.width
                     spacing: 8
@@ -150,7 +254,7 @@ GlassCard {
         }
 
         Text {
-            visible: root.events.length === 0
+            visible: root.shownEvents.length === 0
             text: "no events this tick"
             color: Theme.textDim
             font.family: Theme.fontFamily

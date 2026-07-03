@@ -45,6 +45,7 @@ class SimController : public QObject
     Q_PROPERTY(int          totalProcessCount READ totalProcessCount NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList cpuHistory        READ cpuHistory        NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList eventsHistory     READ eventsHistory     NOTIFY stateUpdated)
+    Q_PROPERTY(QVariantList rawHistory        READ rawHistory        NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList utilHistory       READ utilHistory       NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList turnaroundHistory READ turnaroundHistory NOTIFY stateUpdated)
     Q_PROPERTY(QVariantList throughputHistory READ throughputHistory NOTIFY stateUpdated)
@@ -82,6 +83,7 @@ public:
     int          totalProcessCount() const { return m_totalProcessCount; }
     QVariantList cpuHistory()        const { return m_cpuHistory; }
     QVariantList eventsHistory()     const { return m_eventsHistory; }
+    QVariantList rawHistory()        const { return m_rawHistory; }
     QVariantList utilHistory()       const { return m_utilHistory; }
     QVariantList turnaroundHistory() const { return m_turnaroundHistory; }
     QVariantList throughputHistory() const { return m_throughputHistory; }
@@ -154,6 +156,7 @@ private:
     int          m_totalProcessCount = 0;
     QVariantList m_cpuHistory;
     QVariantList m_eventsHistory;  /* one entry per recorded tick: that tick's events[] */
+    QVariantList m_rawHistory;     /* one entry per recorded tick: the raw JSON line */
     QVariantList m_utilHistory;
     QVariantList m_turnaroundHistory;
     QVariantList m_throughputHistory;

@@ -393,6 +393,21 @@ TEST_F(SimControllerTest, EventsHistoryAccumulatesPerRecordedTick)
     EXPECT_EQ(ctrl.eventsHistory().size(), 2);
 }
 
+TEST_F(SimControllerTest, RawHistoryAccumulatesPerRecordedTick)
+{
+    feedSnapshot(ctrl, baseSnap(1));
+    feedSnapshot(ctrl, baseSnap(2));
+
+    ASSERT_EQ(ctrl.rawHistory().size(), 2);
+    /* each entry is that tick's raw JSON line, aligned with eventsHistory */
+    EXPECT_TRUE(ctrl.rawHistory().at(0).toString().contains("\"tick\":1"));
+    EXPECT_EQ(ctrl.rawHistory().last().toString(), ctrl.rawSnapshot());
+
+    /* duplicate tick is not re-recorded */
+    feedSnapshot(ctrl, baseSnap(2));
+    EXPECT_EQ(ctrl.rawHistory().size(), 2);
+}
+
 TEST_F(SimControllerTest, BuildArgsScenarioModePassesFileAndServeOnly)
 {
     QVariantMap p;

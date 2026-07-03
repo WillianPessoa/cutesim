@@ -313,8 +313,10 @@ void SimController::onSnapshot(const QJsonObject &snap, const QString &raw)
         if (e.contains("quantum_max"))  m["quantum_max"]  = e["quantum_max"].toInt();
         m_events.append(m);
     }
-    if (record)
+    if (record) {
         appendCapped(m_eventsHistory, m_events);
+        appendCapped(m_rawHistory, raw);
+    }
 
     /* ── allProcesses + totalProcessCount ───────────────────────────── */
     {
@@ -389,7 +391,8 @@ void SimController::clearState()
     m_prevEvents.clear();
     m_rawSnapshot.clear();
     m_ganttHistory.clear(); m_allProcesses.clear();
-    m_cpuHistory.clear(); m_eventsHistory.clear(); m_utilHistory.clear();
+    m_cpuHistory.clear(); m_eventsHistory.clear(); m_rawHistory.clear();
+    m_utilHistory.clear();
     m_turnaroundHistory.clear(); m_throughputHistory.clear();
     m_firstSeenTick.clear();
     m_totalProcessCount = 0;

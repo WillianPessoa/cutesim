@@ -484,6 +484,60 @@ Item {
             verify(c.configText.indexOf("cannot read file") >= 0)
         }
 
+        function test_live_by_default_shows_current_snapshot() {
+            var c = createTemporaryObject(inspComp, this, {
+                rawSnapshot: '{"tick":3}',
+                rawHistory: ['{"tick":1}', '{"tick":2}', '{"tick":3}']
+            })
+            compare(c.live, true)
+            compare(c.shownRaw, '{"tick":3}')
+        }
+
+        function test_step_back_browses_history() {
+            var c = createTemporaryObject(inspComp, this, {
+                rawSnapshot: '{"tick":3}',
+                events: [ { type: "completed", pid: 3 } ],
+                rawHistory: ['{"tick":1}', '{"tick":2}', '{"tick":3}'],
+                eventsHistory: [ [ { type: "arrived", pid: 1 } ], [], [] ]
+            })
+            c.stepBack()   // from live → previous recorded tick
+            compare(c.live, false)
+            compare(c.shownIndex, 1)
+            compare(c.shownRaw, '{"tick":2}')
+            c.stepBack()
+            compare(c.shownIndex, 0)
+            compare(c.shownEvents.length, 1)
+            compare(c.shownEvents[0].type, "arrived")
+            c.stepBack()   // clamps at the first recorded tick
+            compare(c.shownIndex, 0)
+        }
+
+        function test_step_forward_returns_to_live() {
+            var c = createTemporaryObject(inspComp, this, {
+                rawSnapshot: '{"tick":2}',
+                rawHistory: ['{"tick":1}', '{"tick":2}']
+            })
+            c.stepBack()
+            compare(c.shownRaw, '{"tick":1}')
+            c.stepForward()
+            compare(c.live, false)
+            compare(c.shownRaw, '{"tick":2}')
+            c.stepForward()   // past the end → back to live
+            compare(c.live, true)
+        }
+
+        function test_go_live() {
+            var c = createTemporaryObject(inspComp, this, {
+                rawSnapshot: '{"tick":2}',
+                rawHistory: ['{"tick":1}', '{"tick":2}']
+            })
+            c.stepBack()
+            compare(c.live, false)
+            c.goLive()
+            compare(c.live, true)
+            compare(c.shownRaw, '{"tick":2}')
+        }
+
         Component { id: inspComp; InspectorPanel {} }
     }
 
@@ -492,26 +546,23 @@ Item {
         name: "FinishedTable"
         width: 900; height: 300
 
-        function test_full_width_shows_all_columns() {
+        function test_wide_table_needs_no_hscroll() {
             var c = createTemporaryObject(tableComp, this, { width: 900 })
-            compare(c.compact, false)
-            compare(c.narrow, false)
-            compare(c.visibleCols.length, 12)
+            compare(c.needsHScroll, false)
+            compare(c.hx, 0)
         }
 
-        function test_compact_sheds_device_columns() {
-            var c = createTemporaryObject(tableComp, this, { width: 700 })
-            compare(c.compact, true)
-            compare(c.narrow, false)
-            compare(c.visibleCols.length, 9)
-            for (var i = 0; i < c.visibleCols.length; i++)
-                verify(!c.visibleCols[i].dev, "device columns hidden")
-        }
-
-        function test_narrow_also_sheds_extras() {
+        function test_narrow_table_scrolls_instead_of_overflowing() {
             var c = createTemporaryObject(tableComp, this, { width: 500 })
-            compare(c.narrow, true)
-            compare(c.visibleCols.length, 6)
+            compare(c.needsHScroll, true)
+            verify(c.scrollWidth > c.hViewport)
+            // PID stays pinned regardless of scroll state
+            compare(c.pidColWidth, 48)
+        }
+
+        function test_all_columns_always_present() {
+            var c = createTemporaryObject(tableComp, this, { width: 500 })
+            compare(c.cols.length, 11)   // + pinned PID = 12 columns total
         }
 
         Component { id: tableComp; FinishedTable {} }

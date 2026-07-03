@@ -225,10 +225,12 @@ Window {
                     Layout.preferredWidth: 320
                     Layout.fillHeight: true
                     visible: window.inspectorOpen
-                    rawSnapshot: controller ? controller.rawSnapshot : ""
-                    events:      controller ? controller.events      : []
-                    params:      controller ? controller.lastParams  : null
-                    bridge:      (typeof scenarioBridge !== "undefined") ? scenarioBridge : null
+                    rawSnapshot:   controller ? controller.rawSnapshot   : ""
+                    events:        controller ? controller.events        : []
+                    params:        controller ? controller.lastParams    : null
+                    eventsHistory: controller ? controller.eventsHistory : []
+                    rawHistory:    controller ? controller.rawHistory    : []
+                    bridge:        (typeof scenarioBridge !== "undefined") ? scenarioBridge : null
                 }
             }
         }
