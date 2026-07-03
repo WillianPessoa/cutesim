@@ -49,7 +49,8 @@ GlassCard {
             Layout.fillWidth: true
             Layout.fillHeight: true
             label: "cpu utilization"
-            valueText: root.fmtNum(root.stats.cpu_utilization, 1)
+            // snapshot sends a 0..1 fraction — display as NN.00 %
+            valueText: root.fmtNum(root.stats.cpu_utilization * 100, 2)
             unitText: "%"
             valueColor: Theme.accent
             sparkData: root.utilHistory
