@@ -102,6 +102,14 @@ public:
        when present). */
     static QStringList buildArgs(const QVariantMap &params);
 
+    /* Port passed to --serve on launch: honours params["port"], otherwise a
+       fresh random ephemeral port. Never a fixed default — BUG-24: with a
+       fixed port, a stale rr-feedback left over from a dead viewer kept the
+       port, the new server failed to bind silently and the viewer connected
+       to the stale mid-run simulation. Public + static so tests can lock the
+       behaviour. */
+    static int choosePort(const QVariantMap &params);
+
 public slots:
     Q_INVOKABLE void connectToServer(const QString &host = "127.0.0.1", quint16 port = 9000);
     Q_INVOKABLE void step();

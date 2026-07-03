@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 #include <QCoreApplication>
+#include <QDeadlineTimer>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSet>
 #include <QSignalSpy>
 #include "SimController.h"
 
@@ -391,6 +393,62 @@ TEST_F(SimControllerTest, EventsHistoryAccumulatesPerRecordedTick)
     feedSnapshot(ctrl, s2);
     feedSnapshot(ctrl, baseSnap(0));
     EXPECT_EQ(ctrl.eventsHistory().size(), 2);
+}
+
+/* ── BUG-24 regression — stale-server takeover ─────────────────────────
+   The launch port must never fall back to a fixed default: with a fixed
+   port, an rr-feedback orphaned by a dead viewer kept the port, the newly
+   spawned server failed to bind silently and the viewer connected to the
+   stale mid-run simulation (idle gantt, high tick out of nowhere). */
+
+TEST_F(SimControllerTest, ChoosePortHonoursExplicitPort)
+{
+    QVariantMap p;
+    p["port"] = 9137;
+    EXPECT_EQ(SimController::choosePort(p), 9137);
+}
+
+TEST_F(SimControllerTest, ChoosePortDefaultsToEphemeralRange)
+{
+    for (int i = 0; i < 50; ++i) {
+        const int port = SimController::choosePort({});
+        EXPECT_GE(port, 20000);
+        EXPECT_LT(port, 60000);
+    }
+}
+
+TEST_F(SimControllerTest, ChoosePortIsNotAFixedDefault)
+{
+    /* reverting to a constant default (the old 9000) makes every draw equal */
+    QSet<int> seen;
+    for (int i = 0; i < 20; ++i)
+        seen.insert(SimController::choosePort({}));
+    EXPECT_GT(seen.size(), 1) << "launch port must be randomised, not fixed";
+}
+
+TEST_F(SimControllerTest, LaunchTalksToAFreshSimulationEndToEnd)
+{
+    /* End-to-end: launch spawns rr-feedback and must connect to THAT server.
+       A fresh simulation answers the first step with tick 1; a stale server
+       (the BUG-24 symptom) would jump straight to a high tick. */
+    ctrl.launch(QVariantMap{});   // defaults, random port
+
+    QDeadlineTimer connectDeadline(5000);
+    while (!ctrl.isConnected() && !connectDeadline.hasExpired())
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    ASSERT_TRUE(ctrl.isConnected()) << "viewer did not connect to its own rr-feedback";
+
+    EXPECT_EQ(ctrl.tick(), 0) << "connected simulation is not pristine";
+
+    QSignalSpy stateSpy(&ctrl, &SimController::stateUpdated);
+    ctrl.step();
+    QDeadlineTimer stepDeadline(3000);
+    while (stateSpy.isEmpty() && !stepDeadline.hasExpired())
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    ASSERT_FALSE(stateSpy.isEmpty()) << "no snapshot after step";
+
+    EXPECT_EQ(ctrl.tick(), 1) << "first step must land on tick 1 — a higher "
+                                 "tick means a stale simulation answered";
 }
 
 TEST_F(SimControllerTest, RawHistoryAccumulatesPerRecordedTick)

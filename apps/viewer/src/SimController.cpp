@@ -154,13 +154,8 @@ void SimController::launchBinary(const QVariantMap &params)
         qDebug().noquote() << "[rr-feedback]" << m_process->readAllStandardError().trimmed();
     });
 
-    /* BUG-24: a fixed port meant that if an old rr-feedback survived (viewer
-       killed without cleanup), the new server failed to bind silently and the
-       viewer connected to the STALE simulation — mid-run state, idle gantt.
-       A fresh random port per launch never collides with leftovers. */
     QVariantMap p = params;
-    if (!p.contains("port"))
-        p["port"] = 20000 + int(QRandomGenerator::global()->bounded(40000));
+    p["port"] = choosePort(params);
 
     const int   port = p.value("port").toInt();
     QStringList args = buildArgs(p);
@@ -182,6 +177,13 @@ void SimController::launchBinary(const QVariantMap &params)
         emit launchStateChanged();
         connectToServer("127.0.0.1", static_cast<quint16>(port));
     });
+}
+
+int SimController::choosePort(const QVariantMap &params)
+{
+    if (params.contains("port"))
+        return params.value("port").toInt();
+    return 20000 + int(QRandomGenerator::global()->bounded(40000));
 }
 
 QString SimController::findBinary()
