@@ -5,9 +5,17 @@ import QtQuick.Layouts
 
 GlassCard {
     id: root
+    clip: true   // BUG-21: never let column labels escape the card
 
     property var processes: []
     property int selectedPid: -1
+
+    /* BUG-21: with the inspector and/or process detail open the card gets
+       narrow and the fixed-width columns used to overflow behind the
+       neighbouring panels. Shed columns instead: first the per-device I/O
+       breakdown (the I/O total stays), then arrival/service/wait. */
+    readonly property bool compact: width < 830   // hide DISK/TAPE/PRINT
+    readonly property bool narrow:  width < 660   // also hide ARRIVAL/SERVICE/WAIT
 
     signal processSelected(int pid)
 
@@ -40,17 +48,27 @@ GlassCard {
     readonly property var cols: [
         { label: "PID",       width: 48  },
         { label: "STATUS",    width: 100 },
-        { label: "ARRIVAL",   width: 60  },
+        { label: "ARRIVAL",   width: 60,  extra: true },
         { label: "DONE",      width: 52  },
-        { label: "SERVICE",   width: 60  },
+        { label: "SERVICE",   width: 60,  extra: true },
         { label: "CPU",       width: 52  },
-        { label: "DISK",      width: 44  },
-        { label: "TAPE",      width: 44  },
-        { label: "PRINT",     width: 44  },
+        { label: "DISK",      width: 44,  dev: true },
+        { label: "TAPE",      width: 44,  dev: true },
+        { label: "PRINT",     width: 44,  dev: true },
         { label: "I/O",       width: 44  },
-        { label: "WAIT",      width: 56  },
+        { label: "WAIT",      width: 56,  extra: true },
         { label: "TURNAROUND",width: 80  }
     ]
+
+    readonly property var visibleCols: {
+        var out = []
+        for (var i = 0; i < cols.length; i++) {
+            if (compact && cols[i].dev)   continue
+            if (narrow  && cols[i].extra) continue
+            out.push(cols[i])
+        }
+        return out
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -88,7 +106,7 @@ GlassCard {
             spacing: 8
 
             Repeater {
-                model: root.cols
+                model: root.visibleCols
                 delegate: Text {
                     width: modelData.width
                     text: modelData.label
@@ -190,6 +208,7 @@ GlassCard {
 
                     // ARRIVAL
                     Text {
+                        visible: !root.narrow
                         width: 60
                         text: "t" + (done ? p.arrival_tick : p.first_seen_tick)
                         color: done ? Theme.textDim : Qt.rgba(Theme.textDim.r, Theme.textDim.g, Theme.textDim.b, 0.5)
@@ -208,6 +227,7 @@ GlassCard {
 
                     // SERVICE
                     Text {
+                        visible: !root.narrow
                         width: 60
                         text: done ? (p.service_time + "t") : "—"
                         color: Theme.text
@@ -226,6 +246,7 @@ GlassCard {
 
                     // DISK
                     Text {
+                        visible: !root.compact
                         width: 44
                         text: done ? (p.io_disk + "t") : "—"
                         color: (done && p.io_disk > 0) ? Theme.warning : Theme.textDim
@@ -235,6 +256,7 @@ GlassCard {
 
                     // TAPE
                     Text {
+                        visible: !root.compact
                         width: 44
                         text: done ? (p.io_tape + "t") : "—"
                         color: (done && p.io_tape > 0) ? Theme.warning : Theme.textDim
@@ -244,6 +266,7 @@ GlassCard {
 
                     // PRINTER
                     Text {
+                        visible: !root.compact
                         width: 44
                         text: done ? (p.io_printer + "t") : "—"
                         color: (done && p.io_printer > 0) ? Theme.warning : Theme.textDim
@@ -263,6 +286,7 @@ GlassCard {
 
                     // WAIT
                     Text {
+                        visible: !root.narrow
                         width: 56
                         text: done ? (p.wait_time + "t") : "—"
                         color: Theme.textDim
