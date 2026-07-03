@@ -452,7 +452,69 @@ Item {
             compare(c.prettySnapshot, "")
         }
 
+        function test_config_text_empty_without_params() {
+            var c = createTemporaryObject(inspComp, this)
+            compare(c.configText, "")
+            compare(c.view, "snapshot")
+        }
+
+        function test_config_text_random_lists_options() {
+            var c = createTemporaryObject(inspComp, this, { params: {
+                processes: 7, seed: 99, quantumHi: 3, quantumLo: 6,
+                pIo: 25, serviceMin: 5, serviceMax: 15,
+                arrivalMode: "bernoulli", arrivalRate: 20,
+                pDisk: 50, pTape: 30,
+                diskMin: 3, diskMax: 5, tapeMin: 8, tapeMax: 8,
+                printerMin: 12, printerMax: 12,
+                diskMode: "queue", tapeMode: "concurrent", printerMode: "concurrent"
+            } })
+            verify(c.configText.indexOf("random workload") >= 0)
+            verify(c.configText.indexOf("7") >= 0, "process count shown")
+            verify(c.configText.indexOf("bernoulli — 20% per tick") >= 0)
+            verify(c.configText.indexOf("3-5t · queue") >= 0, "disk duration+mode")
+            verify(c.configText.indexOf("printer 20") >= 0, "printer share is remainder")
+        }
+
+        function test_config_text_scenario_shows_path_without_bridge() {
+            var c = createTemporaryObject(inspComp, this, {
+                params: { scenarioFile: "/tmp/x.scn" }
+            })
+            verify(c.configText.indexOf("scenario file") >= 0)
+            verify(c.configText.indexOf("/tmp/x.scn") >= 0)
+            verify(c.configText.indexOf("cannot read file") >= 0)
+        }
+
         Component { id: inspComp; InspectorPanel {} }
+    }
+
+    /* ── FinishedTable ────────────────────────────────────────────────── */
+    TestCase {
+        name: "FinishedTable"
+        width: 900; height: 300
+
+        function test_full_width_shows_all_columns() {
+            var c = createTemporaryObject(tableComp, this, { width: 900 })
+            compare(c.compact, false)
+            compare(c.narrow, false)
+            compare(c.visibleCols.length, 12)
+        }
+
+        function test_compact_sheds_device_columns() {
+            var c = createTemporaryObject(tableComp, this, { width: 700 })
+            compare(c.compact, true)
+            compare(c.narrow, false)
+            compare(c.visibleCols.length, 9)
+            for (var i = 0; i < c.visibleCols.length; i++)
+                verify(!c.visibleCols[i].dev, "device columns hidden")
+        }
+
+        function test_narrow_also_sheds_extras() {
+            var c = createTemporaryObject(tableComp, this, { width: 500 })
+            compare(c.narrow, true)
+            compare(c.visibleCols.length, 6)
+        }
+
+        Component { id: tableComp; FinishedTable {} }
     }
 
     /* ── ProcessDetail ────────────────────────────────────────────────── */

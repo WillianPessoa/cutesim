@@ -227,6 +227,8 @@ Window {
                     visible: window.inspectorOpen
                     rawSnapshot: controller ? controller.rawSnapshot : ""
                     events:      controller ? controller.events      : []
+                    params:      controller ? controller.lastParams  : null
+                    bridge:      (typeof scenarioBridge !== "undefined") ? scenarioBridge : null
                 }
             }
         }
