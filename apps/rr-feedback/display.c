@@ -160,17 +160,22 @@ static void print_cpu_queue(const Queue *q, const Process *skip) {
     }
 }
 
-static void print_io_queue(const Queue *q) {
-    if (q->size == 0) {
-        printf("[vazia]");
-        return;
-    }
+/* skip: process to omit — the one that departed for I/O this tick is shown on
+   the CPU line and only appears in the device queue on the next tick. */
+static void print_io_queue(const Queue *q, const Process *skip) {
     const QueueNode *node = q->head;
+    int printed           = 0;
     while (node) {
         const Process *p = (const Process *)node->data;
-        int servico      = p->cpu_burst_total > 0 ? p->cpu_burst_total - p->cpu_ticks : 0;
-        printf("PID=%-2d (%d) [%d]  ", p->pid, servico, p->io_remaining);
+        if (p != skip) {
+            int servico = p->cpu_burst_total > 0 ? p->cpu_burst_total - p->cpu_ticks : 0;
+            printf("PID=%-2d (%d) [%d]  ", p->pid, servico, p->io_remaining);
+            printed++;
+        }
         node = node->next;
+    }
+    if (!printed) {
+        printf("[vazia]");
     }
 }
 
@@ -260,6 +265,20 @@ void print_tick_trace(const Simulation *s) {
             printf("PID=%-2d  quantum=%d/%d  fila=%s  [preemptado]\n", p->pid, s->last_quantum_used,
                    s->last_quantum_max, fila_nome);
         }
+    } else if (s->last_io_started) {
+        /* Model A: no CPU tick was consumed — the process departed for I/O.
+           Announce where it goes instead of printing a bare idle. */
+        const Process *p     = s->last_io_started;
+        const char *dev_nome = (s->last_io_device == DEVICE_DISK)   ? "DISCO"
+                               : (s->last_io_device == DEVICE_TAPE) ? "FITA"
+                                                                    : "IMPRESSORA";
+        if (p->cpu_burst_total > 0) {
+            int restante = p->cpu_burst_total - p->cpu_ticks;
+            printf("PID=%-2d  restante=%-3d  [→ fila de I/O %s no próximo tick]\n", p->pid,
+                   restante, dev_nome);
+        } else {
+            printf("PID=%-2d  [→ fila de I/O %s no próximo tick]\n", p->pid, dev_nome);
+        }
     } else {
         printf("[ocioso]\n");
     }
@@ -273,13 +292,13 @@ void print_tick_trace(const Simulation *s) {
     printf("\n");
     printf("\n");
     printf("  I/O DISCO     : ");
-    print_io_queue(&s->disk_queue);
+    print_io_queue(&s->disk_queue, s->last_io_started);
     printf("\n");
     printf("  I/O FITA      : ");
-    print_io_queue(&s->tape_queue);
+    print_io_queue(&s->tape_queue, s->last_io_started);
     printf("\n");
     printf("  I/O IMPRESSORA: ");
-    print_io_queue(&s->printer_queue);
+    print_io_queue(&s->printer_queue, s->last_io_started);
     printf("\n");
     printf("\n");
 

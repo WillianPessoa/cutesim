@@ -184,8 +184,10 @@ void sim_step(Simulation *s) {
     DeviceType dev_types[3] = { DEVICE_DISK, DEVICE_TAPE, DEVICE_PRINTER };
 
     /* Clear per-tick state */
-    s->last_preempted = NULL;
-    s->event_count    = 0;
+    s->last_preempted  = NULL;
+    s->last_completed  = NULL;
+    s->last_io_started = NULL;
+    s->event_count     = 0;
 
     /* 1. Process arrivals for this tick — collect, sort by creation_seq, enqueue.
        The scratch array is sized to pending_count, the only upper bound on how
@@ -350,6 +352,11 @@ void sim_step(Simulation *s) {
             must_set_status(p, PROC_BLOCKED);
             queue_enqueue(device_queue(s, dev), p);
             add_event(s, SIM_EVT_IO_START, p->pid, (int)dev, p->io_remaining);
+            /* Record for display before clearing state */
+            s->last_io_started      = p;
+            s->last_io_device       = dev;
+            s->last_io_quantum_used = s->quantum_used;
+            s->last_io_priority     = p->priority;
             s->running = NULL;
             fired_io   = 1;
         }
@@ -362,6 +369,11 @@ void sim_step(Simulation *s) {
             must_set_status(p, PROC_BLOCKED);
             queue_enqueue(device_queue(s, dev), p);
             add_event(s, SIM_EVT_IO_START, p->pid, (int)dev, p->io_remaining);
+            /* Record for display before clearing state */
+            s->last_io_started      = p;
+            s->last_io_device       = dev;
+            s->last_io_quantum_used = s->quantum_used;
+            s->last_io_priority     = p->priority;
             s->running = NULL;
             fired_io   = 1;
         }
@@ -375,6 +387,10 @@ void sim_step(Simulation *s) {
                 p->completion_tick = s->tick;
                 must_set_status(p, PROC_DONE);
                 add_event(s, SIM_EVT_COMPLETED, p->pid, 0, 0);
+                /* Record for display before clearing state */
+                s->last_completed              = p;
+                s->last_completed_quantum_used = s->quantum_used;
+                s->last_completed_priority     = p->priority;
                 s->running      = NULL;
                 s->quantum_used = 0;
             } else {

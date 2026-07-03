@@ -47,7 +47,6 @@ typedef struct {
     int io_ticks_printer;
     int io_count;
 
-    int quantum_remaining;
     int io_remaining;
 
     ScriptedIO *io_script;

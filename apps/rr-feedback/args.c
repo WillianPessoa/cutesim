@@ -12,6 +12,9 @@ static SimConfig default_config(void) {
     cfg.run_mode           = RUN_BATCH;
     cfg.process_count      = 5;
     cfg.service_duration   = (Duration){ 5, 15 };
+    cfg.disk_duration      = (Duration){ 5, 5 };
+    cfg.tape_duration      = (Duration){ 8, 8 };
+    cfg.printer_duration   = (Duration){ 12, 12 };
     return cfg;
 }
 
@@ -246,13 +249,18 @@ SimConfig parse_args(int argc, char **argv, int *error) {
     }
 
     /* device probability redistribution:
-       - 0 explicit: nothing to redistribute (no I/O configured)
+       - 0 explicit: split evenly (34/33/33) — otherwise every I/O falls
+         through the selection chain to the printer
        - 1 or 2 explicit: remaining probability is split evenly among unset devices;
          when the remainder is odd, the extra goes to the first unset device
          in disk -> tape -> printer order
        - 3 explicit: must sum to exactly 100 */
     int n_explicit = disk_set + tape_set + printer_set;
-    if (n_explicit > 0 && n_explicit < 3) {
+    if (n_explicit == 0) {
+        cfg.p_disk    = 34;
+        cfg.p_tape    = 33;
+        cfg.p_printer = 33;
+    } else if (n_explicit < 3) {
         int assigned = (disk_set ? cfg.p_disk : 0)
                      + (tape_set ? cfg.p_tape : 0)
                      + (printer_set ? cfg.p_printer : 0);
@@ -289,6 +297,14 @@ SimConfig parse_args(int argc, char **argv, int *error) {
     if (cfg.disk_duration.min > cfg.disk_duration.max ||
         cfg.tape_duration.min > cfg.tape_duration.max ||
         cfg.printer_duration.min > cfg.printer_duration.max) {
+        *error = 1;
+        return cfg;
+    }
+
+    /* An I/O burst of 0 ticks is meaningless — the process would return on the
+       very next tick without ever occupying the device. */
+    if (cfg.disk_duration.min < 1 || cfg.tape_duration.min < 1 ||
+        cfg.printer_duration.min < 1) {
         *error = 1;
         return cfg;
     }

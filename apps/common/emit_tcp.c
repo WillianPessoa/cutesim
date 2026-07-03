@@ -147,7 +147,8 @@ static void serve_client(int fd, Simulation **sim, SimConfig cfg,
         int        rc  = 0;
         switch (cmd.type) {
         case TCP_CMD_STEP:
-            sim_step(*sim);
+            if (!sim_is_done(*sim))
+                sim_step(*sim);
             rc = send_snapshot(fd, *sim);
             break;
         case TCP_CMD_STATUS:

@@ -186,6 +186,225 @@ TEST(Snapshot, IoStartEventIncludesDeviceAndRemaining) {
 }
 
 // ---------------------------------------------------------------------------
+// Running process — remaining counts down correctly (not always zero)
+// ---------------------------------------------------------------------------
+
+TEST(Snapshot, RemainingCountsDown) {
+    SimConfig cfg  = base_cfg();
+    cfg.quantum_hi = 3;
+    Simulation *s  = sim_create(cfg);
+    ASSERT_NE(s, nullptr);
+
+    Process *p        = process_create(0, 0, 0);
+    p->cpu_burst_total = 10;
+    sim_add_process(s, p);
+
+    char buf[4096];
+
+    sim_run(s, 1); /* quantum_used=1, remaining=2 */
+    snapshot_to_json(s, buf, sizeof(buf));
+    EXPECT_TRUE(has(buf, "\"remaining\":2"));
+    EXPECT_TRUE(has(buf, "\"quantum_used\":1"));
+
+    sim_run(s, 1); /* quantum_used=2, remaining=1 */
+    snapshot_to_json(s, buf, sizeof(buf));
+    EXPECT_TRUE(has(buf, "\"remaining\":1"));
+    EXPECT_TRUE(has(buf, "\"quantum_used\":2"));
+
+    sim_destroy(s);
+}
+
+// ---------------------------------------------------------------------------
+// Preemption tick — cpu field shows preempted process, not null (BUG-01)
+// ---------------------------------------------------------------------------
+
+TEST(Snapshot, PreemptionTickCpuFieldIsNotNull) {
+    SimConfig cfg  = base_cfg();
+    cfg.quantum_hi = 2;
+    Simulation *s  = sim_create(cfg);
+    ASSERT_NE(s, nullptr);
+
+    Process *p        = process_create(0, 0, 0);
+    p->cpu_burst_total = 10;
+    sim_add_process(s, p);
+
+    /* tick 0: arrive+schedule+run(1); tick 1: run(2)+preempt */
+    sim_run(s, 2);
+
+    char buf[4096];
+    snapshot_to_json(s, buf, sizeof(buf));
+
+    /* cpu must show the preempted process, not null */
+    EXPECT_FALSE(has(buf, "\"cpu\":null"));
+    EXPECT_TRUE(has(buf, "\"cpu\":{"));
+    EXPECT_TRUE(has(buf, "\"pid\":0"));
+    EXPECT_TRUE(has(buf, "\"remaining\":0"));
+    EXPECT_TRUE(has(buf, "\"quantum_used\":2"));
+    EXPECT_TRUE(has(buf, "\"quantum_max\":2"));
+    EXPECT_TRUE(has(buf, "\"queue\":\"high\""));
+
+    sim_destroy(s);
+}
+
+// ---------------------------------------------------------------------------
+// Preemption tick — process shown on cpu is NOT duplicated in the low queue;
+// it appears there on the next tick.
+// ---------------------------------------------------------------------------
+
+TEST(Snapshot, PreemptionTickOmitsProcessFromLowQueue) {
+    SimConfig cfg  = base_cfg();
+    cfg.quantum_hi = 2;
+    Simulation *s  = sim_create(cfg);
+    ASSERT_NE(s, nullptr);
+
+    Process *p        = process_create(0, 0, 0);
+    p->cpu_burst_total = 10;
+    sim_add_process(s, p);
+
+    sim_run(s, 2); /* preemption tick: on cpu, hidden from low queue */
+
+    char buf[4096];
+    snapshot_to_json(s, buf, sizeof(buf));
+    EXPECT_TRUE(has(buf, "\"low\":[]"));
+
+    sim_run(s, 1); /* next tick: rescheduled from low → shown on cpu again */
+    snapshot_to_json(s, buf, sizeof(buf));
+    EXPECT_TRUE(has(buf, "\"queue\":\"low\""));
+
+    sim_destroy(s);
+}
+
+// ---------------------------------------------------------------------------
+// Completion tick — cpu field shows the finished process, not null. The
+// process ran its final burst tick this tick, so idle would be wrong.
+// ---------------------------------------------------------------------------
+
+TEST(Snapshot, CompletionTickCpuFieldIsNotNull) {
+    SimConfig cfg  = base_cfg();
+    cfg.quantum_hi = 5;
+    Simulation *s  = sim_create(cfg);
+    ASSERT_NE(s, nullptr);
+
+    Process *p        = process_create(0, 0, 0);
+    p->cpu_burst_total = 3;
+    sim_add_process(s, p);
+
+    /* tick 0: arrive+schedule+run(1); ticks 1-2: run(2,3) → completes */
+    sim_run(s, 3);
+
+    char buf[4096];
+    snapshot_to_json(s, buf, sizeof(buf));
+
+    EXPECT_FALSE(has(buf, "\"cpu\":null"));
+    EXPECT_TRUE(has(buf, "\"cpu\":{"));
+    EXPECT_TRUE(has(buf, "\"quantum_used\":3"));
+    EXPECT_TRUE(has(buf, "\"burst_remaining\":0"));
+    EXPECT_TRUE(has(buf, "\"type\":\"completed\""));
+    EXPECT_TRUE(has(buf, "\"done\":true"));
+
+    sim_destroy(s);
+}
+
+// ---------------------------------------------------------------------------
+// I/O departure tick — cpu field shows the departing process with an io_start
+// ghost instead of null (BUG-16). Model A: no CPU tick is consumed, so the
+// ghost carries a device tag; the viewer keeps the Gantt idle.
+// ---------------------------------------------------------------------------
+
+TEST(Snapshot, IoStartTickCpuFieldIsNotNull) {
+    SimConfig cfg     = base_cfg();
+    cfg.disk_duration = { 4, 4 };
+    Simulation *s     = sim_create(cfg);
+    ASSERT_NE(s, nullptr);
+
+    Process *p        = process_create(0, 0, 0);
+    p->cpu_burst_total = 10;
+    ScriptedIO ev    = { 1, DEVICE_DISK };
+    p->io_script     = &ev;
+    p->io_script_len = 1;
+    sim_add_process(s, p);
+
+    /* tick 0: arrive+schedule+run(1); tick 1: scripted I/O fires before the
+       CPU tick — running goes null with processes still ready */
+    sim_run(s, 2);
+
+    char buf[4096];
+    snapshot_to_json(s, buf, sizeof(buf));
+    p->io_script = nullptr;
+
+    EXPECT_FALSE(has(buf, "\"cpu\":null"));
+    EXPECT_TRUE(has(buf, "\"cpu\":{"));
+    EXPECT_TRUE(has(buf, "\"pid\":0"));
+    EXPECT_TRUE(has(buf, "\"ghost\":\"io_start\""));
+    EXPECT_TRUE(has(buf, "\"device\":\"disk\""));
+    /* one CPU tick consumed before departure; quantum_hi = 3 */
+    EXPECT_TRUE(has(buf, "\"quantum_used\":1"));
+    EXPECT_TRUE(has(buf, "\"burst_remaining\":9"));
+
+    sim_destroy(s);
+}
+
+// ---------------------------------------------------------------------------
+// I/O departure tick — process shown on cpu is NOT duplicated in the device
+// queue; it appears there on the next tick (mirrors the preemption rule).
+// ---------------------------------------------------------------------------
+
+TEST(Snapshot, IoStartTickOmitsProcessFromDeviceQueue) {
+    SimConfig cfg     = base_cfg();
+    cfg.disk_duration = { 4, 4 };
+    Simulation *s     = sim_create(cfg);
+    ASSERT_NE(s, nullptr);
+
+    Process *p        = process_create(0, 0, 0);
+    p->cpu_burst_total = 10;
+    ScriptedIO ev    = { 1, DEVICE_DISK };
+    p->io_script     = &ev;
+    p->io_script_len = 1;
+    sim_add_process(s, p);
+
+    sim_run(s, 2); /* I/O departure tick: on cpu, hidden from disk queue */
+
+    char buf[4096];
+    snapshot_to_json(s, buf, sizeof(buf));
+    EXPECT_TRUE(has(buf, "\"disk\":[]"));
+
+    sim_run(s, 1); /* next tick: visible in the disk queue, io ticked once */
+    snapshot_to_json(s, buf, sizeof(buf));
+    p->io_script = nullptr;
+    EXPECT_TRUE(has(buf, "\"disk\":[{\"pid\":0,\"io_remaining\":3}]"));
+
+    sim_destroy(s);
+}
+
+// ---------------------------------------------------------------------------
+// Ghost tags — preemption and completion ticks carry the ghost field so the
+// viewer can distinguish them from a normally running process.
+// ---------------------------------------------------------------------------
+
+TEST(Snapshot, PreemptionAndCompletionTicksCarryGhostField) {
+    SimConfig cfg  = base_cfg();
+    cfg.quantum_hi = 2;
+    Simulation *s  = sim_create(cfg);
+    ASSERT_NE(s, nullptr);
+
+    Process *p        = process_create(0, 0, 0);
+    p->cpu_burst_total = 3;
+    sim_add_process(s, p);
+
+    char buf[4096];
+
+    sim_run(s, 2); /* quantum 2/2 → preempted */
+    snapshot_to_json(s, buf, sizeof(buf));
+    EXPECT_TRUE(has(buf, "\"ghost\":\"preempted\""));
+
+    sim_run(s, 1); /* rescheduled from low, final burst tick → completed */
+    snapshot_to_json(s, buf, sizeof(buf));
+    EXPECT_TRUE(has(buf, "\"ghost\":\"completed\""));
+
+    sim_destroy(s);
+}
+
+// ---------------------------------------------------------------------------
 // Buffer overflow — returns true size, buffer null-terminated
 // ---------------------------------------------------------------------------
 

@@ -46,6 +46,21 @@ typedef struct {
     int       last_quantum_max;        /* quantum limit that was reached             */
     int       last_preempted_priority; /* priority BEFORE demotion to PRIORITY_LOW  */
 
+    /* Set when a process completes during a tick; cleared at the start of the
+       next tick.  The process ran this tick, so displays must not show idle. */
+    Process  *last_completed;
+    int       last_completed_quantum_used; /* quantum_used at the moment of completion */
+    int       last_completed_priority;
+
+    /* Set when the running process departs for I/O during a tick; cleared at
+       the start of the next tick.  Model A: the process does NOT consume a CPU
+       tick when I/O fires, so the tick is genuinely idle — these fields only
+       let displays show where the process went instead of a bare idle. */
+    Process   *last_io_started;
+    DeviceType last_io_device;
+    int        last_io_quantum_used;  /* quantum_used at the moment of departure */
+    int        last_io_priority;
+
     /* Per-tick event log — cleared at the start of each sim_step */
     SimEvent  events[SIM_MAX_EVENTS];
     int       event_count;
