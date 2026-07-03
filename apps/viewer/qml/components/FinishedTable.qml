@@ -10,14 +10,33 @@ GlassCard {
     property var processes: []
     property int selectedPid: -1
 
-    /* BUG-21: with the inspector and/or process detail open the card gets
-       narrow and the fixed-width columns used to overflow behind the
-       neighbouring panels. Shed columns instead: first the per-device I/O
-       breakdown (the I/O total stays), then arrival/service/wait. */
-    readonly property bool compact: width < 830   // hide DISK/TAPE/PRINT
-    readonly property bool narrow:  width < 660   // also hide ARRIVAL/SERVICE/WAIT
-
     signal processSelected(int pid)
+
+    /* BUG-21 (round 2): the PID column stays pinned on the left; every other
+       column lives in a clipped area that scrolls horizontally, shared by the
+       header and all rows (bottom scroll bar + horizontal wheel). */
+    readonly property int pidColWidth: 48
+    readonly property int colSpacing:  8
+    readonly property real scrollWidth: {
+        var w = 0
+        for (var i = 0; i < cols.length; i++) w += cols[i].width
+        return w + colSpacing * (cols.length - 1)
+    }
+    // room for the scrollable cells: card minus margins, paddings and pid col
+    readonly property real hViewport: Math.max(0, width - 48 - pidColWidth - colSpacing)
+    readonly property bool needsHScroll: scrollWidth > hViewport
+    readonly property real hx: hbar.position * scrollWidth
+
+    WheelHandler {
+        orientation: Qt.Horizontal
+        target: null
+        onWheel: (event) => {
+            if (!root.needsHScroll) return
+            var maxPos = 1 - hbar.size
+            hbar.position = Math.max(0, Math.min(maxPos,
+                hbar.position - (event.angleDelta.x / 2) / root.scrollWidth))
+        }
+    }
 
     readonly property int doneCount: {
         var n = 0
@@ -45,30 +64,20 @@ GlassCard {
         return Theme.warning
     }
 
+    /* Scrollable columns — PID is pinned and lives outside this list */
     readonly property var cols: [
-        { label: "PID",       width: 48  },
         { label: "STATUS",    width: 100 },
-        { label: "ARRIVAL",   width: 60,  extra: true },
+        { label: "ARRIVAL",   width: 60  },
         { label: "DONE",      width: 52  },
-        { label: "SERVICE",   width: 60,  extra: true },
+        { label: "SERVICE",   width: 60  },
         { label: "CPU",       width: 52  },
-        { label: "DISK",      width: 44,  dev: true },
-        { label: "TAPE",      width: 44,  dev: true },
-        { label: "PRINT",     width: 44,  dev: true },
+        { label: "DISK",      width: 44  },
+        { label: "TAPE",      width: 44  },
+        { label: "PRINT",     width: 44  },
         { label: "I/O",       width: 44  },
-        { label: "WAIT",      width: 56,  extra: true },
+        { label: "WAIT",      width: 56  },
         { label: "TURNAROUND",width: 80  }
     ]
-
-    readonly property var visibleCols: {
-        var out = []
-        for (var i = 0; i < cols.length; i++) {
-            if (compact && cols[i].dev)   continue
-            if (narrow  && cols[i].extra) continue
-            out.push(cols[i])
-        }
-        return out
-    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -99,22 +108,42 @@ GlassCard {
             }
         }
 
-        Row {
+        Item {
             Layout.fillWidth: true
-            leftPadding: 12
-            rightPadding: 12
-            spacing: 8
+            Layout.preferredHeight: 16
 
-            Repeater {
-                model: root.visibleCols
-                delegate: Text {
-                    width: modelData.width
-                    text: modelData.label
-                    color: Theme.textDim
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                    font.weight: Font.Bold
-                    font.letterSpacing: 1.3
+            Text {
+                x: 12
+                width: root.pidColWidth
+                text: "PID"
+                color: Theme.textDim
+                font.family: Theme.fontFamily
+                font.pixelSize: 10
+                font.weight: Font.Bold
+                font.letterSpacing: 1.3
+            }
+
+            Item {
+                x: 12 + root.pidColWidth + root.colSpacing
+                width: Math.max(0, parent.width - x - 12)
+                height: parent.height
+                clip: true
+
+                Row {
+                    x: -root.hx
+                    spacing: root.colSpacing
+                    Repeater {
+                        model: root.cols
+                        delegate: Text {
+                            width: modelData.width
+                            text: modelData.label
+                            color: Theme.textDim
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            font.letterSpacing: 1.3
+                        }
+                    }
                 }
             }
         }
@@ -163,31 +192,39 @@ GlassCard {
                     onTapped: root.processSelected(sel ? -1 : p.pid)
                 }
 
+                /* Pinned PID cell */
                 Row {
+                    x: 12
+                    width: root.pidColWidth
+                    spacing: 5
                     anchors.verticalCenter: parent.verticalCenter
-                    leftPadding: 12
-                    rightPadding: 12
-                    spacing: 8
-
                     readonly property color pidCol: Theme.pidColor(p.pid)
+                    Rectangle {
+                        width: 7; height: 7; radius: 2
+                        color: parent.pidCol
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: "P" + p.pid
+                        color: parent.pidCol
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                        font.weight: Font.Bold
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                /* Scrollable cells, offset shared with the header */
+                Item {
+                    x: 12 + root.pidColWidth + root.colSpacing
+                    width: Math.max(0, parent.width - x - 12)
+                    height: parent.height
+                    clip: true
 
                     Row {
-                        width: 48; spacing: 5
-                        anchors.verticalCenter: parent.verticalCenter
-                        Rectangle {
-                            width: 7; height: 7; radius: 2
-                            color: parent.parent.pidCol
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        Text {
-                            text: "P" + p.pid
-                            color: parent.parent.pidCol
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
-                            font.weight: Font.Bold
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
+                    x: -root.hx
+                    height: parent.height
+                    spacing: root.colSpacing
 
                     Rectangle {
                         width: 100; height: 18; radius: 4
@@ -208,7 +245,6 @@ GlassCard {
 
                     // ARRIVAL
                     Text {
-                        visible: !root.narrow
                         width: 60
                         text: "t" + (done ? p.arrival_tick : p.first_seen_tick)
                         color: done ? Theme.textDim : Qt.rgba(Theme.textDim.r, Theme.textDim.g, Theme.textDim.b, 0.5)
@@ -227,7 +263,6 @@ GlassCard {
 
                     // SERVICE
                     Text {
-                        visible: !root.narrow
                         width: 60
                         text: done ? (p.service_time + "t") : "—"
                         color: Theme.text
@@ -246,7 +281,6 @@ GlassCard {
 
                     // DISK
                     Text {
-                        visible: !root.compact
                         width: 44
                         text: done ? (p.io_disk + "t") : "—"
                         color: (done && p.io_disk > 0) ? Theme.warning : Theme.textDim
@@ -256,7 +290,6 @@ GlassCard {
 
                     // TAPE
                     Text {
-                        visible: !root.compact
                         width: 44
                         text: done ? (p.io_tape + "t") : "—"
                         color: (done && p.io_tape > 0) ? Theme.warning : Theme.textDim
@@ -266,7 +299,6 @@ GlassCard {
 
                     // PRINTER
                     Text {
-                        visible: !root.compact
                         width: 44
                         text: done ? (p.io_printer + "t") : "—"
                         color: (done && p.io_printer > 0) ? Theme.warning : Theme.textDim
@@ -286,7 +318,6 @@ GlassCard {
 
                     // WAIT
                     Text {
-                        visible: !root.narrow
                         width: 56
                         text: done ? (p.wait_time + "t") : "—"
                         color: Theme.textDim
@@ -304,6 +335,7 @@ GlassCard {
                         font.weight: done ? Font.Bold : Font.Normal
                         anchors.verticalCenter: parent.verticalCenter
                     }
+                    }
                 }
 
                 HoverHandler { id: rowHov }
@@ -318,6 +350,19 @@ GlassCard {
                 font.pixelSize: 11
                 opacity: 0.6
             }
+        }
+
+        ScrollBar {
+            id: hbar
+            Layout.fillWidth: true
+            Layout.leftMargin: 12 + root.pidColWidth + root.colSpacing
+            Layout.rightMargin: 12
+            Layout.preferredHeight: root.needsHScroll ? implicitHeight : 0
+            visible: root.needsHScroll
+            orientation: Qt.Horizontal
+            policy: ScrollBar.AlwaysOn
+            size: root.scrollWidth > 0 ? Math.min(1, root.hViewport / root.scrollWidth) : 1
+            onSizeChanged: position = Math.max(0, Math.min(position, 1 - size))
         }
     }
 }
