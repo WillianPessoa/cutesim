@@ -118,9 +118,11 @@ Rectangle {
                         color:   Theme.danger
                         opacity: 0.55
                         HoverHandler { id: idleHov }
-                        ToolTip.visible: idleHov.hovered
-                        ToolTip.delay:   300
-                        ToolTip.text:    "tick " + index + " — idle"
+                        Tip {
+                            visible: idleHov.hovered
+                            delay:   300
+                            text:    "tick " + index + " — idle"
+                        }
                     }
                 }
 
@@ -158,9 +160,11 @@ Rectangle {
                                 visible: root.history[index] === lane.pid
                                 color:   Theme.pidColor(lane.pid)
                                 HoverHandler { id: blockHov }
-                                ToolTip.visible: blockHov.hovered
-                                ToolTip.delay:   300
-                                ToolTip.text:    "tick " + index + " — P" + lane.pid
+                                Tip {
+                                    visible: blockHov.hovered
+                                    delay:   300
+                                    text:    "tick " + index + " — P" + lane.pid
+                                }
                             }
                         }
                     }

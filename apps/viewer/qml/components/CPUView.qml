@@ -236,13 +236,15 @@ GlassCard {
                         opacity: pid === 0 ? 0.5 : 0.85
 
                         HoverHandler { id: stripHov }
-                        ToolTip.visible: stripHov.hovered
-                        ToolTip.delay:   200
-                        ToolTip.text: {
-                            var t = root.history.length - stripRow.slice24.length + index
-                            return pid === 0
-                                ? "tick " + t + " — idle"
-                                : "tick " + t + " — P" + pid
+                        Tip {
+                            visible: stripHov.hovered
+                            delay:   200
+                            text: {
+                                var t = root.history.length - stripRow.slice24.length + index
+                                return pid === 0
+                                    ? "tick " + t + " — idle"
+                                    : "tick " + t + " — P" + pid
+                            }
                         }
                     }
                 }

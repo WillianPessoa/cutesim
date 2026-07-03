@@ -207,7 +207,7 @@ GlassCard {
                 Row {
                     id: stripRow
                     spacing: 1
-                    readonly property int blockW: Math.max(4,
+                    readonly property int blockW: Math.max(8,
                         Math.floor((stripFlick.width - (root.stripData.length - 1))
                                    / Math.max(1, root.stripData.length)))
 
@@ -222,9 +222,11 @@ GlassCard {
                                    : (modelData >= 3 && modelData <= 4) ? 0.55
                                    : 0.88
                             HoverHandler { id: blkHov }
-                            ToolTip.visible: blkHov.hovered && modelData > 0
-                            ToolTip.delay:   150
-                            ToolTip.text:    root.stripTip(modelData, index + 1)
+                            Tip {
+                                visible: blkHov.hovered && modelData > 0
+                                delay:   150
+                                text:    root.stripTip(modelData, index + 1)
+                            }
                         }
                     }
                 }

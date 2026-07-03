@@ -31,6 +31,7 @@ qt_add_qml_module(cutesim_viewer_qml
         qml/components/TickChip.qml
         qml/components/CtrlButton.qml
         qml/components/SpinBox.qml
+        qml/components/Tip.qml
         qml/components/Toast.qml
         qml/components/Sparkline.qml
         qml/components/StatItem.qml
