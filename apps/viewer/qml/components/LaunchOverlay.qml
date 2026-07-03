@@ -181,7 +181,10 @@ Item {
     /* ── Card ───────────────────────────────────────────────────────── */
     Rectangle {
         id: card
-        width: 640
+        // Random mode spreads over two columns; scenario mode is a single
+        // narrower list. Never wider than the window.
+        width: Math.min(root.mode === "random" ? 1100 : 640, root.width - 48)
+        Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         color: Theme.cardBgSolid
@@ -273,48 +276,64 @@ Item {
                 Item { Layout.preferredHeight: 18 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-                /* ── Random workload ────────────────────────────────── */
-                ColumnLayout {
+                /* ── Random workload — two columns: workload/scheduling
+                       on the left, everything I/O on the right ─────────── */
+                RowLayout {
                     visible: root.mode === "random"
                     Layout.fillWidth: true
                     Layout.topMargin: 16
                     Layout.bottomMargin: 16
-                    spacing: 18
+                    spacing: 20
 
-                    /* Simple params, two per row with aligned columns */
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: 2
-                        columnSpacing: 24
-                        rowSpacing: 18
+                    /* Left column — workload & scheduling */
+                    ColumnLayout {
+                        Layout.fillWidth: true; Layout.preferredWidth: 100
+                        Layout.alignment: Qt.AlignTop
+                        spacing: 16
 
-                        ColumnLayout {
-                            Layout.fillWidth: true; Layout.preferredWidth: 100
-                            Layout.alignment: Qt.AlignTop
-                            spacing: 8
-                            SectionHead { title: "Processes"; hint: "how many processes enter the system" }
-                            SpinBox {
-                                boxWidth: 110; minimumValue: 1; maximumValue: 20
-                                value: root.processes
-                                onValueChanged: root.processes = value
+                        Text {
+                            text: "WORKLOAD & SCHEDULING"
+                            color: Theme.textDim
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            font.letterSpacing: 2.0
+                        }
+
+                        /* Processes + Seed side by side (single spins) */
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 2
+                            columnSpacing: 20
+                            rowSpacing: 16
+
+                            ColumnLayout {
+                                Layout.fillWidth: true; Layout.preferredWidth: 100
+                                Layout.alignment: Qt.AlignTop
+                                spacing: 8
+                                SectionHead { title: "Processes"; hint: "how many processes enter the system" }
+                                SpinBox {
+                                    boxWidth: 110; minimumValue: 1; maximumValue: 20
+                                    value: root.processes
+                                    onValueChanged: root.processes = value
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true; Layout.preferredWidth: 100
+                                Layout.alignment: Qt.AlignTop
+                                spacing: 8
+                                SectionHead { title: "Seed"; hint: "RNG seed — same seed, same run" }
+                                SpinBox {
+                                    boxWidth: 110; minimumValue: 0; maximumValue: 99999
+                                    value: root.seed
+                                    onValueChanged: root.seed = value
+                                }
                             }
                         }
 
                         ColumnLayout {
-                            Layout.fillWidth: true; Layout.preferredWidth: 100
-                            Layout.alignment: Qt.AlignTop
-                            spacing: 8
-                            SectionHead { title: "Seed"; hint: "RNG seed — same seed, same run" }
-                            SpinBox {
-                                boxWidth: 110; minimumValue: 0; maximumValue: 99999
-                                value: root.seed
-                                onValueChanged: root.seed = value
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true; Layout.preferredWidth: 100
-                            Layout.alignment: Qt.AlignTop
+                            Layout.fillWidth: true
                             spacing: 8
                             SectionHead { title: "Quantum"; hint: "time slice per queue, in ticks" }
                             RowLayout {
@@ -335,8 +354,7 @@ Item {
                         }
 
                         ColumnLayout {
-                            Layout.fillWidth: true; Layout.preferredWidth: 100
-                            Layout.alignment: Qt.AlignTop
+                            Layout.fillWidth: true
                             spacing: 8
                             SectionHead { title: "Service"; hint: "CPU burst per process, sampled in [min, max]" }
                             RowLayout {
@@ -355,164 +373,176 @@ Item {
                                 }
                             }
                         }
-                    }
 
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
-
-                    /* Arrival */
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        SectionHead {
-                            title: "Arrival"
-                            hint: root.arrivalMode === "batch"     ? "all processes arrive together at tick 0"
-                                : root.arrivalMode === "bernoulli" ? "each tick has an N% chance of one arrival"
-                                : root.arrivalMode === "poisson"   ? "λ arrivals per tick on average (value ×0.01)"
-                                                                   : "exactly one arrival every N ticks"
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-                            SegmentControl {
-                                options: ["batch", "bernoulli", "poisson", "uniform"]
-                                value: root.arrivalMode
-                                onSelected: (v) => root.arrivalMode = v
-                            }
-                            Item { Layout.fillWidth: true }
-                            FieldTag {
-                                visible: root.arrivalMode !== "batch"
-                                text: root.arrivalMode === "bernoulli" ? "% per tick"
-                                    : root.arrivalMode === "poisson"   ? "λ ×0.01"
-                                                                       : "ticks"
-                            }
-                            SpinBox {
-                                visible: root.arrivalMode === "bernoulli"
-                                boxWidth: 96; minimumValue: 1; maximumValue: 100
-                                value: root.arrivalRate
-                                onValueChanged: root.arrivalRate = value
-                            }
-                            SpinBox {
-                                visible: root.arrivalMode === "poisson"
-                                boxWidth: 96; minimumValue: 1; maximumValue: 300
-                                value: root.arrivalLambdaPct
-                                onValueChanged: root.arrivalLambdaPct = value
-                            }
-                            SpinBox {
-                                visible: root.arrivalMode === "uniform"
-                                boxWidth: 96; minimumValue: 1; maximumValue: 50
-                                value: root.arrivalInterval
-                                onValueChanged: root.arrivalInterval = value
-                            }
-                        }
-                    }
-
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
-
-                    /* I/O probability */
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        SectionHead {
-                            title: "I/O probability"
-                            hint: "chance that the running process fires an I/O request on each CPU tick — 0 keeps the workload CPU-only"
-                        }
-                        RowLayout {
-                            spacing: 8
-                            SpinBox {
-                                boxWidth: 96; minimumValue: 0; maximumValue: 100
-                                value: root.pIo
-                                onValueChanged: root.pIo = value
-                            }
-                            FieldTag { text: "% per tick" }
-                        }
-                    }
-
-                    /* Device split */
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        SectionHead {
-                            title: "Device split"
-                            hint: "which device each I/O request goes to — the printer takes whatever is left"
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-                            FieldTag { text: "disk" }
-                            SpinBox {
-                                boxWidth: 96; minimumValue: 0; maximumValue: 100
-                                value: root.pDisk
-                                onValueChanged: root.pDisk = value
-                            }
-                            FieldTag { text: "tape"; Layout.leftMargin: 10 }
-                            SpinBox {
-                                boxWidth: 96; minimumValue: 0; maximumValue: 100 - root.pDisk
-                                value: root.pTape
-                                onValueChanged: root.pTape = value
-                            }
-                            FieldTag { text: "printer"; Layout.leftMargin: 10 }
-                            Text {
-                                text: root.pPrinter + " %"
-                                color: Theme.text
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeMed
-                                font.weight: Font.Bold
-                            }
-                            Item { Layout.fillWidth: true }
-                        }
-                    }
-
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
-
-                    /* Per-device duration + execution mode */
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        SectionHead {
-                            title: "I/O duration & mode"
-                            hint: "per device: how long a request holds it (ticks, sampled in [min, max]) and how it serves — concurrent: all processes advance · queue: only the head"
-                        }
-                        /* One aligned line per device: label · min/max spins ·
-                           mode buttons (fixed column widths keep rows aligned). */
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 8
+                            SectionHead {
+                                title: "Arrival"
+                                hint: root.arrivalMode === "batch"     ? "all processes arrive together at tick 0"
+                                    : root.arrivalMode === "bernoulli" ? "each tick has an N% chance of one arrival"
+                                    : root.arrivalMode === "poisson"   ? "λ arrivals per tick on average (value ×0.01)"
+                                                                       : "exactly one arrival every N ticks"
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                SegmentControl {
+                                    options: ["batch", "bernoulli", "poisson", "uniform"]
+                                    value: root.arrivalMode
+                                    onSelected: (v) => root.arrivalMode = v
+                                }
+                                Item { Layout.fillWidth: true }
+                                FieldTag {
+                                    visible: root.arrivalMode !== "batch"
+                                    text: root.arrivalMode === "bernoulli" ? "% per tick"
+                                        : root.arrivalMode === "poisson"   ? "λ ×0.01"
+                                                                           : "ticks"
+                                }
+                                SpinBox {
+                                    visible: root.arrivalMode === "bernoulli"
+                                    boxWidth: 96; minimumValue: 1; maximumValue: 100
+                                    value: root.arrivalRate
+                                    onValueChanged: root.arrivalRate = value
+                                }
+                                SpinBox {
+                                    visible: root.arrivalMode === "poisson"
+                                    boxWidth: 96; minimumValue: 1; maximumValue: 300
+                                    value: root.arrivalLambdaPct
+                                    onValueChanged: root.arrivalLambdaPct = value
+                                }
+                                SpinBox {
+                                    visible: root.arrivalMode === "uniform"
+                                    boxWidth: 96; minimumValue: 1; maximumValue: 50
+                                    value: root.arrivalInterval
+                                    onValueChanged: root.arrivalInterval = value
+                                }
+                            }
+                        }
+                    }
 
-                            Repeater {
-                                model: [
-                                    { name: "Disk",    minKey: "diskMin",    maxKey: "diskMax",    modeKey: "diskMode"    },
-                                    { name: "Tape",    minKey: "tapeMin",    maxKey: "tapeMax",    modeKey: "tapeMode"    },
-                                    { name: "Printer", minKey: "printerMin", maxKey: "printerMax", modeKey: "printerMode" }
-                                ]
-                                delegate: RowLayout {
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    spacing: 8
-                                    Text {
-                                        text: modelData.name
-                                        color: Theme.text
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 11
-                                        font.weight: Font.Medium
-                                        Layout.preferredWidth: 52
-                                    }
-                                    FieldTag { text: "min" }
-                                    SpinBox {
-                                        boxWidth: 96; minimumValue: 1; maximumValue: 100
-                                        value: root[modelData.minKey]
-                                        onValueChanged: root[modelData.minKey] = value
-                                    }
-                                    FieldTag { text: "max"; Layout.leftMargin: 8 }
-                                    SpinBox {
-                                        boxWidth: 96; minimumValue: root[modelData.minKey]; maximumValue: 100
-                                        value: root[modelData.maxKey]
-                                        onValueChanged: root[modelData.maxKey] = value
-                                    }
-                                    Item { Layout.fillWidth: true }
-                                    SegmentControl {
-                                        options: ["concurrent", "queue"]
-                                        value: root[modelData.modeKey]
-                                        onSelected: (v) => root[modelData.modeKey] = v
+                    Rectangle {
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: 1
+                        color: Theme.divider
+                    }
+
+                    /* Right column — I/O */
+                    ColumnLayout {
+                        Layout.fillWidth: true; Layout.preferredWidth: 100
+                        Layout.alignment: Qt.AlignTop
+                        spacing: 16
+
+                        Text {
+                            text: "I/O"
+                            color: Theme.textDim
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            font.letterSpacing: 2.0
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            SectionHead {
+                                title: "I/O probability"
+                                hint: "chance that the running process fires an I/O request on each CPU tick — 0 keeps the workload CPU-only"
+                            }
+                            RowLayout {
+                                spacing: 8
+                                SpinBox {
+                                    boxWidth: 96; minimumValue: 0; maximumValue: 100
+                                    value: root.pIo
+                                    onValueChanged: root.pIo = value
+                                }
+                                FieldTag { text: "% per tick" }
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            SectionHead {
+                                title: "Device split"
+                                hint: "which device each I/O request goes to — the printer takes whatever is left"
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                FieldTag { text: "disk" }
+                                SpinBox {
+                                    boxWidth: 96; minimumValue: 0; maximumValue: 100
+                                    value: root.pDisk
+                                    onValueChanged: root.pDisk = value
+                                }
+                                FieldTag { text: "tape"; Layout.leftMargin: 10 }
+                                SpinBox {
+                                    boxWidth: 96; minimumValue: 0; maximumValue: 100 - root.pDisk
+                                    value: root.pTape
+                                    onValueChanged: root.pTape = value
+                                }
+                                FieldTag { text: "printer"; Layout.leftMargin: 10 }
+                                Text {
+                                    text: root.pPrinter + " %"
+                                    color: Theme.text
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeMed
+                                    font.weight: Font.Bold
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            SectionHead {
+                                title: "I/O duration & mode"
+                                hint: "how long a request holds each device (ticks in [min, max]) and how it serves — concurrent: all advance · queue: head only"
+                            }
+                            /* One aligned line per device: label · min/max spins ·
+                               mode buttons (fixed column widths keep rows aligned). */
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Repeater {
+                                    model: [
+                                        { name: "Disk",    minKey: "diskMin",    maxKey: "diskMax",    modeKey: "diskMode"    },
+                                        { name: "Tape",    minKey: "tapeMin",    maxKey: "tapeMax",    modeKey: "tapeMode"    },
+                                        { name: "Printer", minKey: "printerMin", maxKey: "printerMax", modeKey: "printerMode" }
+                                    ]
+                                    delegate: RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        Text {
+                                            text: modelData.name
+                                            color: Theme.text
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 11
+                                            font.weight: Font.Medium
+                                            Layout.preferredWidth: 52
+                                        }
+                                        FieldTag { text: "min" }
+                                        SpinBox {
+                                            boxWidth: 96; minimumValue: 1; maximumValue: 100
+                                            value: root[modelData.minKey]
+                                            onValueChanged: root[modelData.minKey] = value
+                                        }
+                                        FieldTag { text: "max"; Layout.leftMargin: 8 }
+                                        SpinBox {
+                                            boxWidth: 96; minimumValue: root[modelData.minKey]; maximumValue: 100
+                                            value: root[modelData.maxKey]
+                                            onValueChanged: root[modelData.maxKey] = value
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                        SegmentControl {
+                                            options: ["concurrent", "queue"]
+                                            value: root[modelData.modeKey]
+                                            onSelected: (v) => root[modelData.modeKey] = v
+                                        }
                                     }
                                 }
                             }
