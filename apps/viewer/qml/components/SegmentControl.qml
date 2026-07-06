@@ -21,7 +21,7 @@ Row {
             height: 24
             radius: 6
             color: active ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
-                          : (segHov.containsMouse ? Theme.hover : "transparent")
+                          : (segHov.hovered ? Theme.hover : "transparent")
             border.width: 1
             border.color: active ? Theme.accentGlow : Theme.divider
 

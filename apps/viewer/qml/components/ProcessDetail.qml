@@ -175,7 +175,7 @@ GlassCard {
             Item { Layout.fillWidth: true }
             Rectangle {
                 width: 20; height: 20; radius: 4
-                color: closeHov.containsMouse ? Theme.hover : "transparent"
+                color: closeHov.hovered ? Theme.hover : "transparent"
                 Text { anchors.centerIn: parent; text: "✕"; color: Theme.textDim; font.pixelSize: 11 }
                 HoverHandler { id: closeHov }
                 TapHandler { onTapped: root.closeRequested() }

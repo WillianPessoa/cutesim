@@ -181,7 +181,7 @@ GlassCard {
                            ? Qt.rgba(Theme.pidColor(p.pid).r,
                                      Theme.pidColor(p.pid).g,
                                      Theme.pidColor(p.pid).b, 0.12)
-                           : rowHov.containsMouse ? Theme.hover : "transparent"
+                           : rowHov.hovered ? Theme.hover : "transparent"
                     border.width: sel ? 1 : 0
                     border.color: Qt.rgba(Theme.pidColor(p.pid).r,
                                           Theme.pidColor(p.pid).g,

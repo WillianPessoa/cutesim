@@ -196,7 +196,7 @@ Item {
                 }
                 Rectangle {
                     width: 22; height: 22; radius: 4
-                    color: closeHov.containsMouse ? Theme.hover : "transparent"
+                    color: closeHov.hovered ? Theme.hover : "transparent"
                     Text { anchors.centerIn: parent; text: "✕"; color: Theme.textDim; font.pixelSize: 12 }
                     HoverHandler { id: closeHov }
                     TapHandler { onTapped: root.closed() }
@@ -455,7 +455,7 @@ Item {
 
                                 Rectangle {
                                     width: 20; height: 20; radius: 4
-                                    color: rmHov.containsMouse ? Theme.hover : "transparent"
+                                    color: rmHov.hovered ? Theme.hover : "transparent"
                                     Text { anchors.centerIn: parent; text: "✕"; color: Theme.textDim; font.pixelSize: 10 }
                                     HoverHandler { id: rmHov }
                                     TapHandler {
