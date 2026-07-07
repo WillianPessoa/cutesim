@@ -21,7 +21,9 @@ GlassCard {
             spacing: 8
 
             Rectangle {
-                width: 6; height: 6; radius: 1
+                width: 6
+                height: 6
+                radius: 1
                 color: root.qColor
                 Layout.alignment: Qt.AlignVCenter
             }
@@ -34,7 +36,9 @@ GlassCard {
                 font.letterSpacing: 1.4
                 Layout.alignment: Qt.AlignVCenter
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             RowLayout {
                 spacing: 4
                 Text {
@@ -80,11 +84,10 @@ GlassCard {
                         chipColor: root.qColor
                         pid: modelData.pid
                         highlighted: root.highlightPids.indexOf(modelData.pid) >= 0
-                        meta: root.kind === "io"
-                              ? ("io:" + (modelData.io_remaining !== undefined
-                                          ? modelData.io_remaining : 0) + "t")
-                              : ((modelData.remaining !== undefined
-                                  ? modelData.remaining : 0) + "t")
+                        meta: root.kind === "io" ? ("io:" + (modelData.io_remaining !== undefined
+                                                             ? modelData.io_remaining : 0) + "t") : (
+                                                       (modelData.remaining !== undefined
+                                                        ? modelData.remaining : 0) + "t")
                     }
                 }
             }

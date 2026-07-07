@@ -20,8 +20,8 @@ Row {
             width: segTxt.implicitWidth + 18
             height: 24
             radius: 6
-            color: active ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
-                          : (segHov.hovered ? Theme.hover : "transparent")
+            color: active ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16) : (
+                                segHov.hovered ? Theme.hover : "transparent")
             border.width: 1
             border.color: active ? Theme.accentGlow : Theme.divider
 
@@ -36,12 +36,15 @@ Row {
                 font.letterSpacing: 1.0
             }
 
-            HoverHandler { id: segHov; cursorShape: Qt.PointingHandCursor }
+            HoverHandler {
+                id: segHov
+                cursorShape: Qt.PointingHandCursor
+            }
             TapHandler {
                 onTapped: {
                     if (root.value !== modelData) {
-                        root.value = modelData
-                        root.selected(modelData)
+                        root.value = modelData;
+                        root.selected(modelData);
                     }
                 }
             }

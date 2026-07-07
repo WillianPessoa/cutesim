@@ -21,19 +21,22 @@ GlassCard {
     // Last N CPU pids (0 = idle), used by the history strip
     property var history: []
 
-    readonly property string ghostLabel:
-        ghost === "preempted"  ? "→ low queue"     :
-        ghost === "completed"  ? "finished ✓"      :
-        ghost === "io_disk"    ? "→ disk queue"    :
-        ghost === "io_tape"    ? "→ tape queue"    :
-        ghost === "io_printer" ? "→ printer queue" : ""
+    readonly property string ghostLabel: ghost === "preempted" ? "→ low queue" : ghost
+                                                                 === "completed" ? "finished ✓" :
+                                                                                   ghost === "io_disk"
+                                                                                   ? "→ disk queue" :
+                                                                                     ghost === "io_tape"
+                                                                                     ? "→ tape queue" :
+                                                                                       ghost === "io_printer"
+                                                                                       ? "→ printer queue" :
+                                                                                         ""
 
     readonly property bool fromHigh: !isIdle && cpu.queue === "high"
     readonly property color queueColor: fromHigh ? Theme.qHigh : Theme.qLow
     accentStripe: isIdle ? "transparent" : queueColor
 
     readonly property int displayQuantumUsed: isIdle ? 0 : cpu.quantum_used
-    readonly property int displayQuantumMax:  isIdle ? 1 : cpu.quantum_max
+    readonly property int displayQuantumMax: isIdle ? 1 : cpu.quantum_max
     readonly property int burstRemaining: (!isIdle && cpu.burst_remaining !== undefined)
                                           ? cpu.burst_remaining : -1
 
@@ -53,15 +56,16 @@ GlassCard {
                 font.weight: Font.Bold
                 font.letterSpacing: 1.6
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             Text {
                 visible: root.ghostLabel.length > 0
                 text: root.ghostLabel.toUpperCase()
-                color: root.ghost === "completed"  ? Theme.accentAlt
-                     : root.ghost === "io_disk"    ? Theme.qDisk
-                     : root.ghost === "io_tape"    ? Theme.qTape
-                     : root.ghost === "io_printer" ? Theme.qPrint
-                                                   : Theme.warning
+                color: root.ghost === "completed" ? Theme.accentAlt : root.ghost === "io_disk"
+                                                    ? Theme.qDisk : root.ghost === "io_tape"
+                                                      ? Theme.qTape : root.ghost === "io_printer"
+                                                        ? Theme.qPrint : Theme.warning
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
                 font.weight: Font.Bold
@@ -100,7 +104,9 @@ GlassCard {
                 font.weight: Font.Bold
                 font.letterSpacing: -1.6
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             Row {
                 visible: !root.isIdle
                 spacing: 16
@@ -158,7 +164,9 @@ GlassCard {
                     font.weight: Font.Medium
                     font.letterSpacing: 1.6
                 }
-                Item { Layout.fillWidth: true }
+                Item {
+                    Layout.fillWidth: true
+                }
                 Text {
                     text: root.displayQuantumUsed + " / " + root.displayQuantumMax
                     color: Theme.text
@@ -176,35 +184,47 @@ GlassCard {
 
                 Rectangle {
                     height: parent.height
-                    width: parent.width
-                           * Math.max(0, root.displayQuantumUsed - 1)
-                           / Math.max(1, root.displayQuantumMax)
+                    width: parent.width * Math.max(0, root.displayQuantumUsed - 1) / Math.max(1,
+                                                                                              root.displayQuantumMax)
                     color: root.queueColor
                     opacity: 0.6
-                    Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: 200
+                            easing.type: Easing.OutCubic
+                        }
+                    }
                 }
 
                 Rectangle {
-                    x: parent.width
-                       * Math.max(0, root.displayQuantumUsed - 1)
-                       / Math.max(1, root.displayQuantumMax)
+                    x: parent.width * Math.max(0, root.displayQuantumUsed - 1) / Math.max(1,
+                                                                                          root.displayQuantumMax)
                     height: parent.height
                     width: parent.width / Math.max(1, root.displayQuantumMax)
                     color: root.queueColor
-                    Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                    Behavior on x {
+                        NumberAnimation {
+                            duration: 200
+                            easing.type: Easing.OutCubic
+                        }
+                    }
                 }
                 Repeater {
                     model: Math.max(0, root.displayQuantumMax - 1)
                     delegate: Rectangle {
                         x: (index + 1) * (parent.width / root.displayQuantumMax) - 0.5
-                        y: 0; width: 1; height: parent.height
+                        y: 0
+                        width: 1
+                        height: parent.height
                         color: Qt.rgba(0, 0, 0, 0.35)
                     }
                 }
             }
         }
 
-        Item { Layout.fillHeight: true }
+        Item {
+            Layout.fillHeight: true
+        }
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 6
@@ -232,18 +252,19 @@ GlassCard {
 
                         property int pid: modelData
 
-                        color:   pid === 0 ? Theme.idle : Theme.pidColor(pid)
+                        color: pid === 0 ? Theme.idle : Theme.pidColor(pid)
                         opacity: pid === 0 ? 0.5 : 0.85
 
-                        HoverHandler { id: stripHov }
+                        HoverHandler {
+                            id: stripHov
+                        }
                         Tip {
                             visible: stripHov.hovered
-                            delay:   200
+                            delay: 200
                             text: {
-                                var t = root.history.length - stripRow.slice24.length + index
-                                return pid === 0
-                                    ? "tick " + t + " — idle"
-                                    : "tick " + t + " — P" + pid
+                                var t = root.history.length - stripRow.slice24.length + index;
+                                return pid === 0 ? "tick " + t + " — idle" : "tick " + t + " — P"
+                                                   + pid;
                             }
                         }
                     }

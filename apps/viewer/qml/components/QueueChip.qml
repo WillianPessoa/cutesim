@@ -14,12 +14,16 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.radiusSmall
-        color: Qt.rgba(root.chipColor.r, root.chipColor.g, root.chipColor.b,
-                       root.highlighted ? 0.32 : 0.14)
+        color: Qt.rgba(root.chipColor.r, root.chipColor.g, root.chipColor.b, root.highlighted
+                       ? 0.32 : 0.14)
         border.width: root.highlighted ? 2 : 1
         border.color: root.chipColor
 
-        Behavior on color { ColorAnimation { duration: 300 } }
+        Behavior on color {
+            ColorAnimation {
+                duration: 300
+            }
+        }
     }
 
     Row {

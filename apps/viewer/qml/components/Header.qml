@@ -12,13 +12,13 @@ Rectangle {
     property bool connected: false
     property bool simDone: false
 
-    signal stepRequested()
-    signal resetRequested()
-    signal reconfigureRequested()
-    signal themeToggleRequested()
-    signal inspectorToggleRequested()
+    signal stepRequested
+    signal resetRequested
+    signal reconfigureRequested
+    signal themeToggleRequested
+    signal inspectorToggleRequested
 
-    readonly property bool canRun:      connected && !simDone
+    readonly property bool canRun: connected && !simDone
     readonly property bool canReconfig: connected || simDone
 
     Rectangle {
@@ -60,15 +60,22 @@ Rectangle {
         }
 
         Rectangle {
-            width: 1; Layout.preferredHeight: 28
+            width: 1
+            Layout.preferredHeight: 28
             color: Theme.divider
             Layout.leftMargin: 6
         }
 
-        TickChip   { tick: root.tick }
-        StatusChip { status: root.status }
+        TickChip {
+            tick: root.tick
+        }
+        StatusChip {
+            status: root.status
+        }
 
-        Item { Layout.fillWidth: true }
+        Item {
+            Layout.fillWidth: true
+        }
 
         CtrlButton {
             iconText: "⏵"
@@ -92,7 +99,8 @@ Rectangle {
         }
 
         Rectangle {
-            width: 1; Layout.preferredHeight: 28
+            width: 1
+            Layout.preferredHeight: 28
             color: Theme.divider
         }
 

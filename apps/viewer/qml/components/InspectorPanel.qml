@@ -16,72 +16,94 @@ GlassCard {
     property string view: "snapshot"     // "snapshot" | "config"
 
     /* ── Time travel ────────────────────────────────────────────────────
-       live: follow the latest snapshot (default). Stepping back browses the
-       recorded history; index = tick - 1 (tick 0 is never recorded). */
+    live: follow the latest snapshot (default). Stepping back browses the
+    recorded history; index = tick - 1 (tick 0 is never recorded). */
     property bool live: true
-    property int  histIndex: 0
+    property int histIndex: 0
 
-    readonly property int  histCount: rawHistory.length
+    readonly property int histCount: rawHistory.length
     readonly property bool browsing: !live && histCount > 0
-    readonly property int  shownIndex: Math.max(0, Math.min(histIndex, histCount - 1))
-    readonly property var  shownEvents: browsing ? (eventsHistory[shownIndex] || []) : events
-    readonly property string shownRaw:  browsing ? (rawHistory[shownIndex]   || "") : rawSnapshot
+    readonly property int shownIndex: Math.max(0, Math.min(histIndex, histCount - 1))
+    readonly property var shownEvents: browsing ? (eventsHistory[shownIndex] || []) : events
+    readonly property string shownRaw: browsing ? (rawHistory[shownIndex] || "") : rawSnapshot
 
     function stepBack() {
-        if (histCount === 0) return
-        if (live) { live = false; histIndex = Math.max(0, histCount - 2) }
-        else      histIndex = Math.max(0, shownIndex - 1)
+        if (histCount === 0)
+            return;
+        if (live) {
+            live = false;
+            histIndex = Math.max(0, histCount - 2);
+        } else
+            histIndex = Math.max(0, shownIndex - 1);
     }
     function stepForward() {
-        if (!browsing) return
-        if (shownIndex + 1 >= histCount) live = true
-        else histIndex = shownIndex + 1
+        if (!browsing)
+            return;
+        if (shownIndex + 1 >= histCount)
+            live = true;
+        else
+            histIndex = shownIndex + 1;
     }
-    function goLive() { live = true }
+    function goLive() {
+        live = true;
+    }
 
     // shown snapshot pretty-printed with 2-space indentation; falls back to
     // the raw string when it is not valid JSON.
     readonly property string prettySnapshot: {
-        if (!shownRaw) return ""
-        try { return JSON.stringify(JSON.parse(shownRaw), null, 2) }
-        catch (e) { return shownRaw }
+        if (!shownRaw)
+            return "";
+        try {
+            return JSON.stringify(JSON.parse(shownRaw), null, 2);
+        } catch (e) {
+            return shownRaw;
+        }
+    }
+
+    // configText helpers: nested function declarations inside a binding
+    // block break qmlformat's JS DOM (qtdeclarative), so they live here.
+    function _cfgRow(k, v) {
+        return (k + "            ").slice(0, 12) + v;
+    }
+    function _cfgDur(lo, hi) {
+        return lo === hi ? lo + "t" : lo + "-" + hi + "t";
     }
 
     // What the running simulation was launched with: the scenario file
     // (path + contents) or the random-workload options.
     readonly property string configText: {
-        var p = params
+        var p = params;
         if (!p || Object.keys(p).length === 0)
-            return ""
+            return "";
         if (p.scenarioFile) {
-            var body = bridge ? bridge.readFile(p.scenarioFile) : ""
-            return "# scenario file\n" + p.scenarioFile + "\n\n"
-                 + (body.length > 0 ? body : "(cannot read file)")
+            var body = bridge ? bridge.readFile(p.scenarioFile) : "";
+            return "# scenario file\n" + p.scenarioFile + "\n\n" + (body.length > 0 ? body :
+                                                                                      "(cannot read file)");
         }
-        function row(k, v) { return (k + "            ").slice(0, 12) + v }
-        function dur(lo, hi) { return lo === hi ? lo + "t" : lo + "-" + hi + "t" }
-        var arrival = p.arrivalMode === "bernoulli"
-                        ? "bernoulli — " + p.arrivalRate + "% per tick"
-                    : p.arrivalMode === "poisson"
-                        ? "poisson — λ " + p.arrivalLambda + " per tick"
-                    : p.arrivalMode === "uniform"
-                        ? "uniform — every " + p.arrivalInterval + " ticks"
-                        : "batch — all at tick 0"
-        return [
-            "# random workload",
-            "",
-            row("processes",  p.processes),
-            row("seed",       p.seed),
-            row("quantum",    p.quantumHi + " / " + p.quantumLo),
-            row("service",    dur(p.serviceMin, p.serviceMax)),
-            row("arrival",    arrival),
-            row("i/o prob",   p.pIo + "% per tick"),
-            row("split",      "disk " + p.pDisk + " · tape " + p.pTape
-                              + " · printer " + Math.max(0, 100 - p.pDisk - p.pTape)),
-            row("disk",       dur(p.diskMin, p.diskMax) + " · " + p.diskMode),
-            row("tape",       dur(p.tapeMin, p.tapeMax) + " · " + p.tapeMode),
-            row("printer",    dur(p.printerMin, p.printerMax) + " · " + p.printerMode)
-        ].join("\n")
+        var row = _cfgRow;
+        var dur = _cfgDur;
+        var arrival = p.arrivalMode === "bernoulli" ? "bernoulli — " + p.arrivalRate + "% per tick" :
+                                                      p.arrivalMode === "poisson" ? "poisson — λ "
+                                                                                    + p.arrivalLambda
+                                                                                    + " per tick" :
+                                                                                    p.arrivalMode
+                                                                                    === "uniform"
+                                                                                    ? "uniform — every "
+                                                                                      + p.arrivalInterval
+                                                                                      + " ticks" :
+                                                                                      "batch — all at tick 0";
+        return ["# random workload", "", row("processes", p.processes), row("seed", p.seed), row("quantum",
+                                                                                                 p.quantumHi
+                                                                                                 + " / " + p.quantumLo),
+                row("service", dur(p.serviceMin, p.serviceMax)), row("arrival", arrival), row("i/o prob",
+                                                                                              p.pIo + "% per tick"),
+                row("split", "disk " + p.pDisk + " · tape " + p.pTape + " · printer " + Math.max(0,
+                                                                                                 100 - p.pDisk
+                                                                                                 - p.pTape)),
+                row("disk", dur(p.diskMin, p.diskMax) + " · " + p.diskMode), row("tape", dur(p.tapeMin,
+                                                                                             p.tapeMax)
+                                                                                 + " · " + p.tapeMode),
+                row("printer", dur(p.printerMin, p.printerMax) + " · " + p.printerMode)].join("\n");
     }
 
     ColumnLayout {
@@ -99,9 +121,12 @@ GlassCard {
                 font.weight: Font.Bold
                 font.letterSpacing: 1.4
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             Text {
-                text: root.shownEvents.length + " event" + (root.shownEvents.length !== 1 ? "s" : "")
+                text: root.shownEvents.length + " event" + (root.shownEvents.length !== 1 ? "s" :
+                                                                                            "")
                 color: root.shownEvents.length > 0 ? Theme.accent : Theme.textDim
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
@@ -115,30 +140,6 @@ GlassCard {
             spacing: 6
             visible: root.histCount > 0
 
-            component NavBtn: Rectangle {
-                property string glyph: ""
-                property bool enabledState: true
-                signal tapped()
-                width: 22; height: 20; radius: 5
-                color: navHov.hovered && enabledState ? Theme.hover : Theme.cardBg
-                border.width: 1
-                border.color: Theme.divider
-                opacity: enabledState ? 1.0 : 0.35
-                Text {
-                    anchors.centerIn: parent
-                    text: parent.glyph
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
-                }
-                HoverHandler {
-                    id: navHov
-                    cursorShape: parent.enabledState ? Qt.PointingHandCursor : Qt.ArrowCursor
-                }
-                TapHandler { onTapped: if (parent.enabledState) parent.tapped() }
-            }
-
             NavBtn {
                 glyph: "‹"
                 enabledState: root.live ? root.histCount > 1 : root.shownIndex > 0
@@ -151,25 +152,25 @@ GlassCard {
             }
 
             Text {
-                text: root.browsing
-                      ? "tick " + (root.shownIndex + 1) + " / " + root.histCount
-                      : "live · " + root.histCount + " tick" + (root.histCount !== 1 ? "s" : "")
+                text: root.browsing ? "tick " + (root.shownIndex + 1) + " / " + root.histCount : "live · "
+                                      + root.histCount + " tick" + (root.histCount !== 1 ? "s" : "")
                 color: root.browsing ? Theme.warning : Theme.textDim
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
                 font.weight: root.browsing ? Font.Bold : Font.Normal
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             Rectangle {
                 visible: root.browsing
                 width: liveTxt.implicitWidth + 14
                 height: 20
                 radius: 5
-                color: liveHov.hovered
-                       ? Theme.accent
-                       : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12)
+                color: liveHov.hovered ? Theme.accent : Qt.rgba(Theme.accent.r, Theme.accent.g,
+                                                                Theme.accent.b, 0.12)
                 border.width: 1
                 border.color: Theme.accentGlow
                 Text {
@@ -182,12 +183,21 @@ GlassCard {
                     font.weight: Font.Bold
                     font.letterSpacing: 1.2
                 }
-                HoverHandler { id: liveHov; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: root.goLive() }
+                HoverHandler {
+                    id: liveHov
+                    cursorShape: Qt.PointingHandCursor
+                }
+                TapHandler {
+                    onTapped: root.goLive()
+                }
             }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.divider
+        }
 
         // Events of the shown tick
         Column {
@@ -202,16 +212,24 @@ GlassCard {
                     spacing: 8
 
                     Rectangle {
-                        width: 6; height: 6; radius: 1
+                        width: 6
+                        height: 6
+                        radius: 1
                         color: {
-                            var t = modelData.type
-                            if (t === "arrived")   return Theme.accentAlt
-                            if (t === "scheduled") return Theme.qHigh
-                            if (t === "preempted") return Theme.warning
-                            if (t === "io_start")  return Theme.qDisk
-                            if (t === "io_return") return Theme.qTape
-                            if (t === "completed") return Theme.accentAlt
-                            return Theme.textDim
+                            var t = modelData.type;
+                            if (t === "arrived")
+                                return Theme.accentAlt;
+                            if (t === "scheduled")
+                                return Theme.qHigh;
+                            if (t === "preempted")
+                                return Theme.warning;
+                            if (t === "io_start")
+                                return Theme.qDisk;
+                            if (t === "io_return")
+                                return Theme.qTape;
+                            if (t === "completed")
+                                return Theme.accentAlt;
+                            return Theme.textDim;
                         }
                         Layout.alignment: Qt.AlignVCenter
                     }
@@ -235,14 +253,14 @@ GlassCard {
 
                     Text {
                         text: {
-                            var d = modelData
+                            var d = modelData;
                             if (d.type === "preempted")
-                                return "quantum " + d.quantum_used + "/" + d.quantum_max
+                                return "quantum " + d.quantum_used + "/" + d.quantum_max;
                             if (d.type === "io_start" || d.type === "io_return")
-                                return d.device || ""
+                                return d.device || "";
                             if (d.type === "scheduled" && d.queue)
-                                return "→ " + d.queue
-                            return ""
+                                return "→ " + d.queue;
+                            return "";
                         }
                         color: Theme.textDim
                         font.family: Theme.fontFamily
@@ -262,7 +280,11 @@ GlassCard {
             opacity: 0.6
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.divider
+        }
 
         // Bottom area: raw JSON snapshot or the launch configuration
         RowLayout {
@@ -271,14 +293,18 @@ GlassCard {
                 options: ["snapshot", "config"]
                 value: root.view
                 segPixelSize: 9
-                onSelected: (v) => root.view = v
+                onSelected: v => root.view = v
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             Text {
                 visible: root.view === "config"
-                text: (root.params && root.params.scenarioFile) ? "scenario file"
-                    : (root.params && Object.keys(root.params).length > 0) ? "random workload"
-                                                                           : ""
+                text: (root.params && root.params.scenarioFile) ? "scenario file" : (root.params
+                                                                                     && Object.keys(
+                                                                                         root.params).length
+                                                                                     > 0) ? "random workload" :
+                                                                                            ""
                 color: Theme.textDim
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
@@ -293,9 +319,8 @@ GlassCard {
 
             TextArea {
                 readOnly: true
-                text: root.view === "config"
-                      ? (root.configText || "(not launched yet)")
-                      : (root.prettySnapshot || "(none)")
+                text: root.view === "config" ? (root.configText || "(not launched yet)") : (
+                                                   root.prettySnapshot || "(none)")
                 color: Theme.textDim
                 font.family: "Menlo, Monaco, Courier New, monospace"
                 font.pixelSize: 9
@@ -305,6 +330,35 @@ GlassCard {
                 topPadding: 0
                 leftPadding: 0
             }
+        }
+    }
+
+    component NavBtn: Rectangle {
+        property string glyph: ""
+        property bool enabledState: true
+        signal tapped
+        width: 22
+        height: 20
+        radius: 5
+        color: navHov.hovered && enabledState ? Theme.hover : Theme.cardBg
+        border.width: 1
+        border.color: Theme.divider
+        opacity: enabledState ? 1.0 : 0.35
+        Text {
+            anchors.centerIn: parent
+            text: parent.glyph
+            color: Theme.text
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+            font.weight: Font.Bold
+        }
+        HoverHandler {
+            id: navHov
+            cursorShape: parent.enabledState ? Qt.PointingHandCursor : Qt.ArrowCursor
+        }
+        TapHandler {
+            onTapped: if (parent.enabledState)
+                          parent.tapped()
         }
     }
 }

@@ -30,7 +30,9 @@ Item {
                 font.weight: Font.Bold
                 font.letterSpacing: 1.4
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             Text {
                 visible: root.alert
                 text: "● ALERT"
@@ -69,7 +71,9 @@ Item {
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             Sparkline {
                 visible: root.sparkData.length > 1

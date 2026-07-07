@@ -8,23 +8,28 @@ Rectangle {
 
     property var history: []
     property int totalProcessCount: 0
-    property int finishedCount:     0
+    property int finishedCount: 0
     property int blockWidth: 14
-    property int rowHeight:  24
+    property int rowHeight: 24
     property int labelWidth: 56
     property int axisHeight: 22
 
     readonly property int remainingCount: totalProcessCount - finishedCount
 
     readonly property var pids: {
-        var seen = {}
-        var out  = []
+        var seen = {};
+        var out = [];
         for (var i = 0; i < history.length; i++) {
-            var p = history[i]
-            if (p >= 0 && !seen[p]) { seen[p] = true; out.push(p) }
+            var p = history[i];
+            if (p >= 0 && !seen[p]) {
+                seen[p] = true;
+                out.push(p);
+            }
         }
-        out.sort(function(a, b) { return a - b })
-        return out
+        out.sort(function (a, b) {
+            return a - b;
+        });
+        return out;
     }
 
     color: Theme.cardBgSolid
@@ -32,7 +37,10 @@ Rectangle {
     implicitHeight: 240
 
     ColumnLayout {
-        anchors { fill: parent; margins: Theme.padding }
+        anchors {
+            fill: parent
+            margins: Theme.padding
+        }
         spacing: Theme.gap
 
         RowLayout {
@@ -54,15 +62,15 @@ Rectangle {
                 font.family: Theme.fontFamily
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             RowLayout {
                 spacing: 6
                 visible: root.totalProcessCount > 0
                 Text {
-                    text: root.remainingCount > 0
-                          ? root.remainingCount + " remaining"
-                          : "all done"
+                    text: root.remainingCount > 0 ? root.remainingCount + " remaining" : "all done"
                     color: root.remainingCount > 0 ? Theme.accent : Theme.accentAlt
                     font.pixelSize: Theme.fontSizeSmall
                     font.family: Theme.fontFamily
@@ -83,26 +91,32 @@ Rectangle {
                 id: flick
                 x: root.labelWidth
                 y: 0
-                width:  chartArea.width  - root.labelWidth
+                width: chartArea.width - root.labelWidth
                 height: chartArea.height - root.axisHeight
-                contentWidth:  chartArea.contentW
+                contentWidth: chartArea.contentW
                 contentHeight: chartArea.contentH
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 
-                onContentWidthChanged:  contentX = Math.max(0, contentWidth  - width)
+                onContentWidthChanged: contentX = Math.max(0, contentWidth - width)
                 onContentHeightChanged: contentY = Math.max(0, contentHeight - height)
 
-                ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
-                ScrollBar.vertical:   ScrollBar { policy: ScrollBar.AsNeeded }
+                ScrollBar.horizontal: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
 
                 Repeater {
                     model: Math.floor(root.history.length / 5) + 1
                     Rectangle {
                         x: index * 5 * root.blockWidth
                         y: 0
-                        width: 1; height: chartArea.contentH
-                        color: Theme.hoverStrong; opacity: 0.35
+                        width: 1
+                        height: chartArea.contentH
+                        color: Theme.hoverStrong
+                        opacity: 0.35
                     }
                 }
 
@@ -111,17 +125,19 @@ Rectangle {
                     Rectangle {
                         x: index * root.blockWidth + 1
                         y: root.pids.length * root.rowHeight + 4
-                        width:  root.blockWidth - 2
-                        height: root.rowHeight  - 8
+                        width: root.blockWidth - 2
+                        height: root.rowHeight - 8
                         radius: 2
                         visible: root.history[index] === -1
-                        color:   Theme.danger
+                        color: Theme.danger
                         opacity: 0.55
-                        HoverHandler { id: idleHov }
+                        HoverHandler {
+                            id: idleHov
+                        }
                         Tip {
                             visible: idleHov.hovered
-                            delay:   300
-                            text:    "tick " + index + " — idle"
+                            delay: 300
+                            text: "tick " + index + " — idle"
                         }
                     }
                 }
@@ -133,20 +149,21 @@ Rectangle {
                         property int pid: modelData
                         x: 0
                         y: (root.pids.length - 1 - index) * root.rowHeight
-                        width:  chartArea.contentW
+                        width: chartArea.contentW
                         height: root.rowHeight
 
                         Rectangle {
                             anchors.fill: parent
-                            color: index % 2 === 0
-                                   ? "transparent"
-                                   : Qt.rgba(1, 1, 1, Theme.isDark ? 0.02 : 0.04)
+                            color: index % 2 === 0 ? "transparent" : Qt.rgba(1, 1, 1, Theme.isDark
+                                                                             ? 0.02 : 0.04)
                         }
 
                         Rectangle {
                             y: root.rowHeight / 2
-                            width: parent.width; height: 1
-                            color: Theme.hoverStrong; opacity: 0.3
+                            width: parent.width
+                            height: 1
+                            color: Theme.hoverStrong
+                            opacity: 0.3
                         }
 
                         Repeater {
@@ -154,16 +171,18 @@ Rectangle {
                             Rectangle {
                                 x: index * root.blockWidth + 1
                                 y: 4
-                                width:  root.blockWidth - 2
-                                height: root.rowHeight  - 8
+                                width: root.blockWidth - 2
+                                height: root.rowHeight - 8
                                 radius: 2
                                 visible: root.history[index] === lane.pid
-                                color:   Theme.pidColor(lane.pid)
-                                HoverHandler { id: blockHov }
+                                color: Theme.pidColor(lane.pid)
+                                HoverHandler {
+                                    id: blockHov
+                                }
                                 Tip {
                                     visible: blockHov.hovered
-                                    delay:   300
-                                    text:    "tick " + index + " — P" + lane.pid
+                                    delay: 300
+                                    text: "tick " + index + " — P" + lane.pid
                                 }
                             }
                         }
@@ -183,28 +202,38 @@ Rectangle {
 
             Item {
                 id: yPanel
-                x: 0; y: 0
-                width:  root.labelWidth
+                x: 0
+                y: 0
+                width: root.labelWidth
                 height: chartArea.height - root.axisHeight
                 clip: true
                 z: 3
 
-                Rectangle { anchors.fill: parent; color: root.color }
+                Rectangle {
+                    anchors.fill: parent
+                    color: root.color
+                }
 
                 Item {
                     y: -flick.contentY
                     width: parent.width
 
                     Item {
-                        y: root.pids.length * root.rowHeight; height: root.rowHeight; width: parent.width
+                        y: root.pids.length * root.rowHeight
+                        height: root.rowHeight
+                        width: parent.width
                         Row {
                             anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left; anchors.leftMargin: 4
+                            anchors.left: parent.left
+                            anchors.leftMargin: 4
                             spacing: 6
                             Rectangle {
-                                width: 10; height: 10; radius: 2
+                                width: 10
+                                height: 10
+                                radius: 2
                                 anchors.verticalCenter: parent.verticalCenter
-                                color: Theme.danger; opacity: 0.7
+                                color: Theme.danger
+                                opacity: 0.7
                             }
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -221,13 +250,17 @@ Rectangle {
                         model: root.pids
                         Item {
                             y: (root.pids.length - 1 - index) * root.rowHeight
-                            height: root.rowHeight; width: parent.width
+                            height: root.rowHeight
+                            width: parent.width
                             Row {
                                 anchors.verticalCenter: parent.verticalCenter
-                                anchors.left: parent.left; anchors.leftMargin: 4
+                                anchors.left: parent.left
+                                anchors.leftMargin: 4
                                 spacing: 6
                                 Rectangle {
-                                    width: 10; height: 10; radius: 2
+                                    width: 10
+                                    height: 10
+                                    radius: 2
                                     anchors.verticalCenter: parent.verticalCenter
                                     color: Theme.pidColor(modelData)
                                 }
@@ -249,12 +282,15 @@ Rectangle {
                 id: xPanel
                 x: root.labelWidth
                 y: chartArea.height - root.axisHeight
-                width:  chartArea.width - root.labelWidth
+                width: chartArea.width - root.labelWidth
                 height: root.axisHeight
                 clip: true
                 z: 3
 
-                Rectangle { anchors.fill: parent; color: root.color }
+                Rectangle {
+                    anchors.fill: parent
+                    color: root.color
+                }
 
                 Item {
                     x: -flick.contentX
@@ -265,14 +301,19 @@ Rectangle {
                         model: Math.floor(root.history.length / 5) + 1
                         Item {
                             x: index * 5 * root.blockWidth
-                            y: 0; width: 40; height: parent.height
+                            y: 0
+                            width: 40
+                            height: parent.height
 
                             Rectangle {
-                                width: 1; height: 4
-                                color: Theme.textDim; opacity: 0.5
+                                width: 1
+                                height: 4
+                                color: Theme.textDim
+                                opacity: 0.5
                             }
                             Text {
-                                anchors.top: parent.top; anchors.topMargin: 6
+                                anchors.top: parent.top
+                                anchors.topMargin: 6
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: (index * 5).toString()
                                 color: Theme.textDim
@@ -287,7 +328,7 @@ Rectangle {
             Rectangle {
                 x: 0
                 y: chartArea.height - root.axisHeight
-                width:  root.labelWidth
+                width: root.labelWidth
                 height: root.axisHeight
                 color: root.color
                 z: 4

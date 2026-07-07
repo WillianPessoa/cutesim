@@ -32,8 +32,8 @@ Item {
         Text {
             id: num
             objectName: "num"
-            text: String(root.tick).padStart ? String(root.tick).padStart(3, "0")
-                                             : ("000" + root.tick).slice(-3)
+            text: String(root.tick).padStart ? String(root.tick).padStart(3, "0") : ("000" + root.tick).slice(
+                                                   -3)
             color: Theme.textStrong
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeMed
@@ -44,11 +44,25 @@ Item {
 
     SequentialAnimation {
         id: popAnim
-        NumberAnimation { target: num; property: "scale"; from: 1.0; to: 1.08; duration: 100 }
-        NumberAnimation { target: num; property: "scale"; from: 1.08; to: 1.0; duration: 140 }
+        NumberAnimation {
+            target: num
+            property: "scale"
+            from: 1.0
+            to: 1.08
+            duration: 100
+        }
+        NumberAnimation {
+            target: num
+            property: "scale"
+            from: 1.08
+            to: 1.0
+            duration: 140
+        }
     }
     Connections {
         target: root
-        function onTickChanged() { popAnim.restart() }
+        function onTickChanged() {
+            popAnim.restart();
+        }
     }
 }

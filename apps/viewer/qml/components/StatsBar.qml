@@ -8,13 +8,14 @@ GlassCard {
     // stats: { cpu_utilization, avg_turnaround, avg_waiting, avg_response, throughput }
     property var stats: ({})
 
-    property var utilHistory:       []
+    property var utilHistory: []
     property var turnaroundHistory: []
     property var throughputHistory: []
 
     function fmtNum(v, digits) {
-        if (v === undefined || v === null || isNaN(v)) return "—"
-        return Number(v).toFixed(digits)
+        if (v === undefined || v === null || isNaN(v))
+            return "—";
+        return Number(v).toFixed(digits);
     }
 
     ColumnLayout {
@@ -35,7 +36,9 @@ GlassCard {
                 font.weight: Font.Bold
                 font.letterSpacing: 1.4
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             Text {
                 text: "live"
                 color: Theme.textDim
@@ -56,7 +59,11 @@ GlassCard {
             sparkData: root.utilHistory
             sparkColor: Theme.accent
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.divider
+        }
 
         StatItem {
             Layout.fillWidth: true
@@ -68,7 +75,11 @@ GlassCard {
             sparkData: []
             sparkColor: Theme.warning
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.divider
+        }
 
         StatItem {
             Layout.fillWidth: true
@@ -80,7 +91,11 @@ GlassCard {
             sparkData: root.turnaroundHistory
             sparkColor: Theme.accentAlt
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.divider
+        }
 
         StatItem {
             Layout.fillWidth: true

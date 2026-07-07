@@ -12,10 +12,11 @@ Item {
     property color toastColor: Theme.danger
 
     function show(msg, color) {
-        message = msg
-        if (color !== undefined) toastColor = color
-        opacity = 1
-        hideTimer.restart()
+        message = msg;
+        if (color !== undefined)
+            toastColor = color;
+        opacity = 1;
+        hideTimer.restart();
     }
 
     Timer {
@@ -24,7 +25,11 @@ Item {
         onTriggered: root.opacity = 0
     }
 
-    Behavior on opacity { NumberAnimation { duration: 240 } }
+    Behavior on opacity {
+        NumberAnimation {
+            duration: 240
+        }
+    }
 
     Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -41,9 +46,9 @@ Item {
             anchors.centerIn: parent
             text: root.message
             color: {
-                var c = root.toastColor
-                var lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
-                return lum > 0.55 ? "#0d0f1a" : "#ffffff"
+                var c = root.toastColor;
+                var lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+                return lum > 0.55 ? "#0d0f1a" : "#ffffff";
             }
             font.family: Theme.fontFamily
             font.pixelSize: 12

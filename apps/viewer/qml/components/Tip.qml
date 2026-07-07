@@ -3,9 +3,9 @@ import QtQuick.Controls.Basic
 import CuteSim.Viewer
 
 /* Tip — themed tooltip. The ToolTip attached properties render through the
-   application style's shared instance, which can come up with no background
-   depending on which style wins; this explicit component always draws the
-   themed card behind the text. */
+application style's shared instance, which can come up with no background
+depending on which style wins; this explicit component always draws the
+themed card behind the text. */
 ToolTip {
     id: control
 
