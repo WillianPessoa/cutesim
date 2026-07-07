@@ -45,3 +45,37 @@ add_subdirectory(apps/common)
 add_subdirectory(apps/rr-feedback)
 add_subdirectory(apps/viewer)
 add_subdirectory(tests)
+
+# `format` rewrites every C/C++ and QML source in place. The pre-commit hook
+# (scripts/pre-commit) only checks and points here when a file needs it.
+find_program(CLANG_FORMAT_PROGRAM clang-format)
+find_program(QMLFORMAT_PROGRAM qmlformat HINTS "${Qt6_DIR}/../../../bin")
+
+file(GLOB_RECURSE FORMAT_C_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/*.c
+    ${CMAKE_SOURCE_DIR}/include/*.h
+    ${CMAKE_SOURCE_DIR}/apps/*.c
+    ${CMAKE_SOURCE_DIR}/apps/*.h
+    ${CMAKE_SOURCE_DIR}/apps/*.cpp
+    ${CMAKE_SOURCE_DIR}/tests/*.cpp
+    ${CMAKE_SOURCE_DIR}/tests/*.h
+)
+file(GLOB_RECURSE FORMAT_QML_SOURCES
+    ${CMAKE_SOURCE_DIR}/apps/*.qml
+    ${CMAKE_SOURCE_DIR}/tests/*.qml
+)
+
+set(FORMAT_COMMANDS "")
+if(CLANG_FORMAT_PROGRAM)
+    list(APPEND FORMAT_COMMANDS COMMAND ${CLANG_FORMAT_PROGRAM} -i ${FORMAT_C_SOURCES})
+endif()
+if(QMLFORMAT_PROGRAM)
+    list(APPEND FORMAT_COMMANDS COMMAND ${QMLFORMAT_PROGRAM} -i ${FORMAT_QML_SOURCES})
+endif()
+if(FORMAT_COMMANDS)
+    add_custom_target(format
+        ${FORMAT_COMMANDS}
+        COMMENT "Formatting C/C++ and QML sources in place"
+        VERBATIM
+    )
+endif()
