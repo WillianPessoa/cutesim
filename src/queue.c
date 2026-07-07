@@ -42,8 +42,8 @@ void *queue_dequeue(Queue *q) {
         return NULL;
     }
     QueueNode *node = q->head;
-    void      *data = node->data;
-    q->head = node->next;
+    void *data      = node->data;
+    q->head         = node->next;
     if (!q->head) {
         q->tail = NULL;
     }
@@ -59,10 +59,6 @@ void *queue_peek(const Queue *q) {
     return q->head->data;
 }
 
-int queue_is_empty(const Queue *q) {
-    return q->size == 0;
-}
+int queue_is_empty(const Queue *q) { return q->size == 0; }
 
-int queue_size(const Queue *q) {
-    return q->size;
-}
+int queue_size(const Queue *q) { return q->size; }

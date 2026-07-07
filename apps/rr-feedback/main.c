@@ -133,9 +133,9 @@ static void spawn_scripted(const Scenario *sc, Simulation *sim) {
  * ---------------------------------------------------------------------- */
 
 typedef struct {
-    SimConfig       cfg;
+    SimConfig cfg;
     const Scenario *scenario;
-    int             scripted;
+    int scripted;
 } SpawnCtx;
 
 static void spawn_adapter(Simulation *sim, void *ctx) {
@@ -221,7 +221,9 @@ int main(int argc, char *argv[]) {
         char line[16];
         while (!sim_is_done(sim)) {
             sim_step(sim);
-            if (emit_f) { emit_file_write(emit_f, sim); }
+            if (emit_f) {
+                emit_file_write(emit_f, sim);
+            }
             print_tick_trace(sim);
             printf("\n  [tick %d] > ", sim->tick);
             fflush(stdout);
@@ -235,7 +237,9 @@ int main(int argc, char *argv[]) {
     } else if (cfg.run_mode == RUN_STEPS) {
         for (int i = 0; i < cfg.steps; i++) {
             sim_step(sim);
-            if (emit_f) { emit_file_write(emit_f, sim); }
+            if (emit_f) {
+                emit_file_write(emit_f, sim);
+            }
             if (cfg.trace) {
                 print_tick_trace(sim);
             }
@@ -243,14 +247,18 @@ int main(int argc, char *argv[]) {
     } else { /* RUN_BATCH */
         while (!sim_is_done(sim)) {
             sim_step(sim);
-            if (emit_f) { emit_file_write(emit_f, sim); }
+            if (emit_f) {
+                emit_file_write(emit_f, sim);
+            }
             if (cfg.trace) {
                 print_tick_trace(sim);
             }
         }
     }
 
-    if (emit_f) { fclose(emit_f); }
+    if (emit_f) {
+        fclose(emit_f);
+    }
     print_sim_done(sim);
     print_sim_statistics(sim);
     sim_destroy(sim);

@@ -1,14 +1,14 @@
 #pragma once
 
 typedef struct QueueNode {
-    void             *data;
+    void *data;
     struct QueueNode *next;
 } QueueNode;
 
 typedef struct {
     QueueNode *head;
     QueueNode *tail;
-    int        size;
+    int size;
 } Queue;
 
 /* Initialise a Queue to the empty state.

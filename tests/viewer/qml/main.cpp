@@ -1,5 +1,5 @@
-#include <QtQuickTest/quicktest.h>
 #include <QtQml/QQmlExtensionPlugin>
+#include <QtQuickTest/quicktest.h>
 
 #include "ViewerTestSetup.h"
 

@@ -45,7 +45,7 @@ static int single_token(const char *line, char *word, size_t cap) {
 
 TcpCommand tcp_cmd_parse(const char *line) {
     TcpCommand cmd = { TCP_CMD_INVALID };
-    char       word[16];
+    char word[16];
 
     if (single_token(line, word, sizeof(word)) != 1) {
         return cmd;
@@ -83,9 +83,9 @@ static int write_all(int fd, const char *buf, size_t len) {
 
 /* Serialize the current snapshot and send it as one '\n'-terminated line. */
 static int send_snapshot(int fd, const Simulation *s) {
-    char  stack[SNAP_STACK];
+    char stack[SNAP_STACK];
     char *heap = NULL;
-    int   n    = snapshot_to_json(s, stack, sizeof(stack));
+    int n      = snapshot_to_json(s, stack, sizeof(stack));
 
     const char *line = stack;
     if (n >= SNAP_STACK) {
@@ -107,7 +107,7 @@ static int send_snapshot(int fd, const Simulation *s) {
 
 static int send_error(int fd, const char *msg) {
     char line[128];
-    int  n = snprintf(line, sizeof(line), "{\"error\":\"%s\"}\n", msg);
+    int n = snprintf(line, sizeof(line), "{\"error\":\"%s\"}\n", msg);
     return write_all(fd, line, (size_t)n);
 }
 
@@ -139,16 +139,20 @@ static int recv_line(int fd, char *buf, size_t cap) {
 
 /* Handle one connected client until it disconnects. sim points to the caller's
    Simulation pointer so RESET can swap it for a fresh instance. */
-static void serve_client(int fd, Simulation **sim, SimConfig cfg,
-                         void (*spawn)(Simulation *, void *), void *ctx) {
+static void serve_client(int fd,
+                         Simulation **sim,
+                         SimConfig cfg,
+                         void (*spawn)(Simulation *, void *),
+                         void *ctx) {
     char line[TCP_LINE_MAX];
     while (recv_line(fd, line, sizeof(line)) >= 0) {
         TcpCommand cmd = tcp_cmd_parse(line);
-        int        rc  = 0;
+        int rc         = 0;
         switch (cmd.type) {
         case TCP_CMD_STEP:
-            if (!sim_is_done(*sim))
+            if (!sim_is_done(*sim)) {
                 sim_step(*sim);
+            }
             rc = send_snapshot(fd, *sim);
             break;
         case TCP_CMD_STATUS:
@@ -176,7 +180,9 @@ static void serve_client(int fd, Simulation **sim, SimConfig cfg,
     }
 }
 
-int emit_tcp_serve(SimConfig cfg, void (*spawn)(Simulation *sim, void *ctx), void *spawn_ctx,
+int emit_tcp_serve(SimConfig cfg,
+                   void (*spawn)(Simulation *sim, void *ctx),
+                   void *spawn_ctx,
                    int port) {
     signal(SIGPIPE, SIG_IGN);
 
@@ -197,8 +203,7 @@ int emit_tcp_serve(SimConfig cfg, void (*spawn)(Simulation *sim, void *ctx), voi
     addr.sin_addr.s_addr    = htonl(INADDR_LOOPBACK);
     addr.sin_port           = htons((uint16_t)port);
 
-    if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) != 0 ||
-        listen(listen_fd, 1) != 0) {
+    if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) != 0 || listen(listen_fd, 1) != 0) {
         close(listen_fd);
         return -1;
     }

@@ -106,10 +106,10 @@ TEST(StatsForProcess, PerDeviceIoTicksCarriedThrough) {
 
     ProcStats st = stats_for_process(p);
 
-    EXPECT_EQ(st.io_ticks_disk,    3);
-    EXPECT_EQ(st.io_ticks_tape,    5);
+    EXPECT_EQ(st.io_ticks_disk, 3);
+    EXPECT_EQ(st.io_ticks_tape, 5);
     EXPECT_EQ(st.io_ticks_printer, 2);
-    EXPECT_EQ(st.io_ticks,         10);
+    EXPECT_EQ(st.io_ticks, 10);
 
     process_destroy(p);
 }

@@ -11,15 +11,11 @@ extern "C" {
 #include "cutesim/scenario.h"
 }
 
-ScenarioBridge::ScenarioBridge(QObject *parent)
-    : QObject(parent)
-{
-}
+ScenarioBridge::ScenarioBridge(QObject *parent) : QObject(parent) {}
 
 /* Mirrors default_config() in apps/rr-feedback/args.c so the editor shows the
    effective values for keys a scenario omits. */
-static SimConfig bridgeDefaults()
-{
+static SimConfig bridgeDefaults() {
     SimConfig cfg        = {};
     cfg.quantum_hi       = 3;
     cfg.quantum_lo       = 6;
@@ -35,40 +31,41 @@ static SimConfig bridgeDefaults()
     return cfg;
 }
 
-static QString ioModeStr(IoMode m)
-{
+static QString ioModeStr(IoMode m) {
     return m == IO_MODE_QUEUE ? QStringLiteral("queue") : QStringLiteral("concurrent");
 }
 
-static QString deviceStr(DeviceType d)
-{
+static QString deviceStr(DeviceType d) {
     switch (d) {
-    case DEVICE_DISK:    return QStringLiteral("disk");
-    case DEVICE_TAPE:    return QStringLiteral("tape");
-    case DEVICE_PRINTER: return QStringLiteral("printer");
-    default:             return QStringLiteral("disk");
+    case DEVICE_DISK:
+        return QStringLiteral("disk");
+    case DEVICE_TAPE:
+        return QStringLiteral("tape");
+    case DEVICE_PRINTER:
+        return QStringLiteral("printer");
+    default:
+        return QStringLiteral("disk");
     }
 }
 
 /* Render a process's I/O timeline back to the "t:dev[:d[-d]], …" text form. */
-static QString ioTimelineStr(const ScriptedProcess &p)
-{
+static QString ioTimelineStr(const ScriptedProcess &p) {
     QStringList parts;
     for (int i = 0; i < p.io_count; ++i) {
         const ScriptedIO &ev = p.io[i];
-        QString s = QString::number(ev.service_tick) + ":" + deviceStr(ev.device);
+        QString s            = QString::number(ev.service_tick) + ":" + deviceStr(ev.device);
         if (ev.has_duration) {
             s += ":" + QString::number(ev.duration.min);
-            if (ev.duration.max != ev.duration.min)
+            if (ev.duration.max != ev.duration.min) {
                 s += "-" + QString::number(ev.duration.max);
+            }
         }
         parts << s;
     }
     return parts.join(QStringLiteral(", "));
 }
 
-QVariantMap ScenarioBridge::parse(const QString &text) const
-{
+QVariantMap ScenarioBridge::parse(const QString &text) const {
     QVariantMap out;
 
     Scenario sc = {};
@@ -82,7 +79,7 @@ QVariantMap ScenarioBridge::parse(const QString &text) const
         return out;
     }
 
-    const SimConfig &c = sc.config;
+    const SimConfig &c  = sc.config;
     out["ok"]           = true;
     out["error"]        = QString();
     out["scripted"]     = sc.process_count > 0;
@@ -121,8 +118,7 @@ QVariantMap ScenarioBridge::parse(const QString &text) const
     return out;
 }
 
-QVariantMap ScenarioBridge::summarize(const QString &pathOrUrl) const
-{
+QVariantMap ScenarioBridge::summarize(const QString &pathOrUrl) const {
     const QString path = toLocalPath(pathOrUrl);
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -136,19 +132,19 @@ QVariantMap ScenarioBridge::summarize(const QString &pathOrUrl) const
     return out;
 }
 
-QString ScenarioBridge::readFile(const QString &pathOrUrl) const
-{
+QString ScenarioBridge::readFile(const QString &pathOrUrl) const {
     QFile f(toLocalPath(pathOrUrl));
-    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return {};
+    }
     return QString::fromUtf8(f.readAll());
 }
 
-bool ScenarioBridge::writeFile(const QString &pathOrUrl, const QString &text) const
-{
+bool ScenarioBridge::writeFile(const QString &pathOrUrl, const QString &text) const {
     QFile f(toLocalPath(pathOrUrl));
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
         return false;
+    }
     QTextStream ts(&f);
     ts << text;
     return true;
@@ -158,59 +154,65 @@ bool ScenarioBridge::writeFile(const QString &pathOrUrl, const QString &text) co
    then scenarios/ next to the binary (deployed), then walking up from the
    binary towards the source tree (development/tests) — same idiom as
    SimController::findBinary(). */
-static QString bundledScenariosDir()
-{
+static QString bundledScenariosDir() {
     const QByteArray env = qgetenv("CUTESIM_SCENARIOS");
     if (!env.isEmpty()) {
         const QString s = QString::fromLocal8Bit(env);
-        if (QFileInfo(s).isDir())
+        if (QFileInfo(s).isDir()) {
             return s;
+        }
     }
 
     const QString base = QCoreApplication::applicationDirPath();
-    if (QFileInfo(base + "/scenarios").isDir())
+    if (QFileInfo(base + "/scenarios").isDir()) {
         return base + "/scenarios";
+    }
 
     QDir dir(base);
     for (int i = 0; i < 8; ++i) {
         const QString c = dir.filePath("scenarios");
-        if (QFileInfo(c).isDir())
+        if (QFileInfo(c).isDir()) {
             return c;
-        if (!dir.cdUp())
+        }
+        if (!dir.cdUp()) {
             break;
+        }
     }
     return {};
 }
 
 /* Extract title + description from the leading "#" comment block. */
-static void readHeaderComment(const QString &path, QString *title, QString *description)
-{
+static void readHeaderComment(const QString &path, QString *title, QString *description) {
     QFile f(path);
-    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return;
+    }
 
     QStringList descLines;
     QTextStream ts(&f);
     while (!ts.atEnd()) {
         const QString line = ts.readLine().trimmed();
-        if (!line.startsWith(QLatin1Char('#')))
+        if (!line.startsWith(QLatin1Char('#'))) {
             break;
+        }
         const QString body = line.mid(1).trimmed();
-        if (body.isEmpty())
+        if (body.isEmpty()) {
             continue;
-        if (title->isEmpty())
+        }
+        if (title->isEmpty()) {
             *title = body;
-        else
+        } else {
             descLines << body;
+        }
     }
     *description = descLines.join(QLatin1Char(' '));
 }
 
-QVariantList ScenarioBridge::bundledScenarios() const
-{
+QVariantList ScenarioBridge::bundledScenarios() const {
     const QString dirPath = bundledScenariosDir();
-    if (dirPath.isEmpty())
+    if (dirPath.isEmpty()) {
         return {};
+    }
 
     QVariantList out;
     const QFileInfoList entries = QDir(dirPath).entryInfoList(
@@ -229,9 +231,9 @@ QVariantList ScenarioBridge::bundledScenarios() const
     return out;
 }
 
-QString ScenarioBridge::toLocalPath(const QString &pathOrUrl) const
-{
-    if (pathOrUrl.startsWith(QLatin1String("file:")))
+QString ScenarioBridge::toLocalPath(const QString &pathOrUrl) const {
+    if (pathOrUrl.startsWith(QLatin1String("file:"))) {
         return QUrl(pathOrUrl).toLocalFile();
+    }
     return pathOrUrl;
 }

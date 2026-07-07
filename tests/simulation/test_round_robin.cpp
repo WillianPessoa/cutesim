@@ -16,8 +16,8 @@ static SimConfig test_config(void) {
     cfg.quantum_hi   = QUANTUM_HI;
     cfg.quantum_lo   = QUANTUM_LO;
     cfg.seed         = RNG_SEED;
-    cfg.p_io         = 0;  /* no random I/O      */
-    cfg.arrival_rate = 0;  /* no random arrivals */
+    cfg.p_io         = 0; /* no random I/O      */
+    cfg.arrival_rate = 0; /* no random arrivals */
     return cfg;
 }
 
@@ -60,7 +60,7 @@ TEST(Init, SimCreateAllQueuesEmpty) {
 TEST(Scheduling, ArrivingProcessEntersHiQueue) {
     DESCRIBE("a process added with arrival_tick=0 enters hi_queue on the first step");
     Simulation *s = sim_create(test_config());
-    Process    *p = process_create(1, 0, 0);
+    Process *p    = process_create(1, 0, 0);
     sim_add_process(s, p);
 
     /* before any step: process is pending, not yet in queue */
@@ -75,9 +75,9 @@ TEST(Scheduling, ArrivingProcessEntersHiQueue) {
 
 TEST(Scheduling, IdleCpuSchedulesFromHiQueueFirst) {
     DESCRIBE("when CPU is idle the scheduler picks from hi_queue before lo_queue");
-    Simulation *s  = sim_create(test_config());
-    Process    *hi = process_create(1, 0, 0);
-    Process    *lo = process_create(2, 0, 1);
+    Simulation *s = sim_create(test_config());
+    Process *hi   = process_create(1, 0, 0);
+    Process *lo   = process_create(2, 0, 1);
 
     sim_add_process(s, hi);
     sim_add_process(s, lo);
@@ -94,9 +94,9 @@ TEST(Scheduling, IdleCpuSchedulesFromHiQueueFirst) {
 
 TEST(Scheduling, TieBreakingByCreationSeq) {
     DESCRIBE("two processes arriving at the same tick are scheduled in creation_seq order");
-    Simulation *s  = sim_create(test_config());
-    Process    *p0 = process_create(1, 0, 0); /* creation_seq = 0 */
-    Process    *p1 = process_create(2, 0, 1); /* creation_seq = 1 */
+    Simulation *s = sim_create(test_config());
+    Process *p0   = process_create(1, 0, 0); /* creation_seq = 0 */
+    Process *p1   = process_create(2, 0, 1); /* creation_seq = 1 */
 
     /* Add in reverse order to prove creation_seq drives ordering, not add order */
     sim_add_process(s, p1);
@@ -112,11 +112,12 @@ TEST(Scheduling, TieBreakingByCreationSeq) {
 // ---------------------------------------------------------------------------
 
 TEST(RoundRobin, ProcessRunsForQuantumHiTicks) {
-    DESCRIBE("a process on the high-priority queue runs for exactly quantum_hi ticks before preemption");
+    DESCRIBE(
+        "a process on the high-priority queue runs for exactly quantum_hi ticks before preemption");
     SimConfig cfg  = test_config();
     cfg.quantum_hi = QUANTUM_HI;
     Simulation *s  = sim_create(cfg);
-    Process    *p  = process_create(1, 0, 0);
+    Process *p     = process_create(1, 0, 0);
     sim_add_process(s, p);
 
     sim_run(s, QUANTUM_HI);
@@ -130,7 +131,7 @@ TEST(RoundRobin, PreemptedProcessMovesToLoQueue) {
     SimConfig cfg  = test_config();
     cfg.quantum_hi = QUANTUM_HI;
     Simulation *s  = sim_create(cfg);
-    Process    *p  = process_create(1, 0, 0);
+    Process *p     = process_create(1, 0, 0);
     sim_add_process(s, p);
 
     sim_run(s, QUANTUM_HI);
@@ -146,7 +147,7 @@ TEST(RoundRobin, PreemptedProcessGetsLowPriority) {
     SimConfig cfg  = test_config();
     cfg.quantum_hi = QUANTUM_HI;
     Simulation *s  = sim_create(cfg);
-    Process    *p  = process_create(1, 0, 0);
+    Process *p     = process_create(1, 0, 0);
     sim_add_process(s, p);
 
     sim_run(s, QUANTUM_HI);
@@ -161,7 +162,7 @@ TEST(RoundRobin, LoQueueProcessRunsForQuantumLoTicks) {
     cfg.quantum_hi = QUANTUM_HI;
     cfg.quantum_lo = QUANTUM_LO;
     Simulation *s  = sim_create(cfg);
-    Process    *p  = process_create(1, 0, 0);
+    Process *p     = process_create(1, 0, 0);
     sim_add_process(s, p);
 
     sim_run(s, QUANTUM_HI); /* quantum_hi exhausted → lo_queue */
@@ -177,7 +178,7 @@ TEST(RoundRobin, LoQueueProcessRunsForQuantumLoTicks) {
 TEST(RoundRobin, FirstCpuTickRecorded) {
     DESCRIBE("first_cpu_tick is set to the tick at which the process first runs");
     Simulation *s = sim_create(test_config());
-    Process    *p = process_create(1, 0, 0);
+    Process *p    = process_create(1, 0, 0);
     sim_add_process(s, p);
 
     sim_step(s); /* tick 0: process arrives and runs */

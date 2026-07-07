@@ -4,17 +4,11 @@ extern "C" {
 #include "emit_tcp.h"
 }
 
-TEST(TcpCmdParse, Step) {
-    EXPECT_EQ(tcp_cmd_parse("step").type, TCP_CMD_STEP);
-}
+TEST(TcpCmdParse, Step) { EXPECT_EQ(tcp_cmd_parse("step").type, TCP_CMD_STEP); }
 
-TEST(TcpCmdParse, Reset) {
-    EXPECT_EQ(tcp_cmd_parse("reset").type, TCP_CMD_RESET);
-}
+TEST(TcpCmdParse, Reset) { EXPECT_EQ(tcp_cmd_parse("reset").type, TCP_CMD_RESET); }
 
-TEST(TcpCmdParse, Status) {
-    EXPECT_EQ(tcp_cmd_parse("status").type, TCP_CMD_STATUS);
-}
+TEST(TcpCmdParse, Status) { EXPECT_EQ(tcp_cmd_parse("status").type, TCP_CMD_STATUS); }
 
 TEST(TcpCmdParse, TrailingWhitespaceIsIgnored) {
     EXPECT_EQ(tcp_cmd_parse("step  ").type, TCP_CMD_STEP);

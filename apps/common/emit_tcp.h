@@ -38,5 +38,7 @@ TcpCommand tcp_cmd_parse(const char *line);
 
    `spawn` is invoked to (re)populate a freshly created Simulation both at start
    and on each `reset`; `spawn_ctx` is passed through untouched. */
-int emit_tcp_serve(SimConfig cfg, void (*spawn)(Simulation *sim, void *ctx), void *spawn_ctx,
+int emit_tcp_serve(SimConfig cfg,
+                   void (*spawn)(Simulation *sim, void *ctx),
+                   void *spawn_ctx,
                    int port);

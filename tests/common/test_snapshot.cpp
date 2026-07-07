@@ -3,22 +3,20 @@
 #include <cstring>
 
 extern "C" {
-#include "snapshot.h"
-#include "cutesim/simulation.h"
 #include "cutesim/process.h"
+#include "cutesim/simulation.h"
+#include "snapshot.h"
 }
 
 static SimConfig base_cfg() {
-    SimConfig cfg   = {};
-    cfg.quantum_hi  = 3;
-    cfg.quantum_lo  = 6;
-    cfg.seed        = 42;
+    SimConfig cfg  = {};
+    cfg.quantum_hi = 3;
+    cfg.quantum_lo = 6;
+    cfg.seed       = 42;
     return cfg;
 }
 
-static bool has(const char *buf, const char *needle) {
-    return strstr(buf, needle) != nullptr;
-}
+static bool has(const char *buf, const char *needle) { return strstr(buf, needle) != nullptr; }
 
 // ---------------------------------------------------------------------------
 // Empty simulation — no processes
@@ -56,7 +54,7 @@ TEST(Snapshot, RunningProcess) {
     Simulation *s = sim_create(base_cfg());
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 6;
     sim_add_process(s, p);
 
@@ -85,7 +83,7 @@ TEST(Snapshot, FinishedProcess) {
     Simulation *s     = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 5;
     /* scripted disk I/O after 1 CPU tick */
     ScriptedIO ev    = { 1, DEVICE_DISK };
@@ -119,7 +117,7 @@ TEST(Snapshot, TickEventsIncludeArrivedAndScheduled) {
     Simulation *s = sim_create(base_cfg());
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 6;
     sim_add_process(s, p);
 
@@ -142,7 +140,7 @@ TEST(Snapshot, PreemptionEventIncludesQuantumFields) {
     Simulation *s  = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
     sim_add_process(s, p);
 
@@ -165,11 +163,11 @@ TEST(Snapshot, IoStartEventIncludesDeviceAndRemaining) {
     Simulation *s     = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
-    ScriptedIO ev    = { 1, DEVICE_DISK };
-    p->io_script     = &ev;
-    p->io_script_len = 1;
+    ScriptedIO ev      = { 1, DEVICE_DISK };
+    p->io_script       = &ev;
+    p->io_script_len   = 1;
     sim_add_process(s, p);
 
     sim_run(s, 2); /* tick 0: arrive+schedule; tick 1: run; tick 1 fires IO before tick 2 */
@@ -195,7 +193,7 @@ TEST(Snapshot, RemainingCountsDown) {
     Simulation *s  = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p        = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
     sim_add_process(s, p);
 
@@ -224,7 +222,7 @@ TEST(Snapshot, PreemptionTickCpuFieldIsNotNull) {
     Simulation *s  = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p        = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
     sim_add_process(s, p);
 
@@ -257,7 +255,7 @@ TEST(Snapshot, PreemptionTickOmitsProcessFromLowQueue) {
     Simulation *s  = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p        = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
     sim_add_process(s, p);
 
@@ -285,7 +283,7 @@ TEST(Snapshot, CompletionTickCpuFieldIsNotNull) {
     Simulation *s  = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p        = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 3;
     sim_add_process(s, p);
 
@@ -317,11 +315,11 @@ TEST(Snapshot, IoStartTickCpuFieldIsNotNull) {
     Simulation *s     = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p        = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
-    ScriptedIO ev    = { 1, DEVICE_DISK };
-    p->io_script     = &ev;
-    p->io_script_len = 1;
+    ScriptedIO ev      = { 1, DEVICE_DISK };
+    p->io_script       = &ev;
+    p->io_script_len   = 1;
     sim_add_process(s, p);
 
     /* tick 0: arrive+schedule+run(1); tick 1: scripted I/O fires before the
@@ -355,11 +353,11 @@ TEST(Snapshot, IoStartTickOmitsProcessFromDeviceQueue) {
     Simulation *s     = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p        = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
-    ScriptedIO ev    = { 1, DEVICE_DISK };
-    p->io_script     = &ev;
-    p->io_script_len = 1;
+    ScriptedIO ev      = { 1, DEVICE_DISK };
+    p->io_script       = &ev;
+    p->io_script_len   = 1;
     sim_add_process(s, p);
 
     sim_run(s, 2); /* I/O departure tick: on cpu, hidden from disk queue */
@@ -387,7 +385,7 @@ TEST(Snapshot, PreemptionAndCompletionTicksCarryGhostField) {
     Simulation *s  = sim_create(cfg);
     ASSERT_NE(s, nullptr);
 
-    Process *p        = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 3;
     sim_add_process(s, p);
 

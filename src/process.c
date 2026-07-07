@@ -7,11 +7,11 @@ Process *process_create(int pid, int arrival_tick, int creation_seq) {
     if (!p) {
         return NULL;
     }
-    p->pid            = pid;
-    p->arrival_tick   = arrival_tick;
-    p->creation_seq   = creation_seq;
-    p->status         = PROC_READY;
-    p->first_cpu_tick = -1;
+    p->pid             = pid;
+    p->arrival_tick    = arrival_tick;
+    p->creation_seq    = creation_seq;
+    p->status          = PROC_READY;
+    p->first_cpu_tick  = -1;
     p->completion_tick = -1;
     return p;
 }
@@ -27,15 +27,19 @@ void process_destroy(Process *p) {
 int process_set_status(Process *p, ProcStatus new_status) {
     switch (p->status) {
     case PROC_READY:
-        if (new_status == PROC_RUNNING) break;
+        if (new_status == PROC_RUNNING) {
+            break;
+        }
         return -1;
     case PROC_RUNNING:
-        if (new_status == PROC_READY   ||
-            new_status == PROC_BLOCKED ||
-            new_status == PROC_DONE)    break;
+        if (new_status == PROC_READY || new_status == PROC_BLOCKED || new_status == PROC_DONE) {
+            break;
+        }
         return -1;
     case PROC_BLOCKED:
-        if (new_status == PROC_READY) break;
+        if (new_status == PROC_READY) {
+            break;
+        }
         return -1;
     case PROC_DONE:
         return -1;

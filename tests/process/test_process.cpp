@@ -76,7 +76,8 @@ TEST(Init, IoScriptIsNull) {
 // ---------------------------------------------------------------------------
 
 TEST(Status, ReadyToRunningIsAllowed) {
-    DESCRIBE("READY -> RUNNING is a valid transition: process_set_status returns 0 and updates status");
+    DESCRIBE(
+        "READY -> RUNNING is a valid transition: process_set_status returns 0 and updates status");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
     EXPECT_EQ(process_set_status(p, PROC_RUNNING), 0);
@@ -85,7 +86,8 @@ TEST(Status, ReadyToRunningIsAllowed) {
 }
 
 TEST(Status, RunningToReadyIsAllowed) {
-    DESCRIBE("RUNNING -> READY is valid: process preempted by quantum exhaustion returns to ready queue");
+    DESCRIBE("RUNNING -> READY is valid: process preempted by quantum exhaustion returns to ready "
+             "queue");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
     process_set_status(p, PROC_RUNNING);
@@ -148,7 +150,8 @@ TEST(Status, ReadyToDoneIsRejected) {
 }
 
 TEST(Status, BlockedToRunningIsRejected) {
-    DESCRIBE("BLOCKED -> RUNNING is invalid: a process returning from I/O must pass through the ready queue");
+    DESCRIBE("BLOCKED -> RUNNING is invalid: a process returning from I/O must pass through the "
+             "ready queue");
     Process *p = process_create(1, 0, 0);
     ASSERT_NE(p, nullptr);
     process_set_status(p, PROC_RUNNING);
@@ -164,7 +167,7 @@ TEST(Status, DoneToAnyIsRejected) {
     ASSERT_NE(p, nullptr);
     process_set_status(p, PROC_RUNNING);
     process_set_status(p, PROC_DONE);
-    EXPECT_EQ(process_set_status(p, PROC_READY),   -1);
+    EXPECT_EQ(process_set_status(p, PROC_READY), -1);
     EXPECT_EQ(process_set_status(p, PROC_RUNNING), -1);
     EXPECT_EQ(process_set_status(p, PROC_BLOCKED), -1);
     EXPECT_EQ(p->status, PROC_DONE);

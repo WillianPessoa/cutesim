@@ -48,7 +48,7 @@ int connect_with_retry() {
 
 std::string recv_line(int fd) {
     std::string out;
-    char        c;
+    char c;
     while (read(fd, &c, 1) == 1) {
         if (c == '\n') {
             break;

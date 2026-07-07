@@ -1,7 +1,7 @@
 #include "cutesim/statistics.h"
 
 ProcStats stats_for_process(const Process *p) {
-    ProcStats st = { 0 };
+    ProcStats st        = { 0 };
     st.pid              = p->pid;
     st.arrival          = p->arrival_tick;
     st.service          = p->cpu_ticks;
@@ -10,8 +10,8 @@ ProcStats stats_for_process(const Process *p) {
     st.io_ticks_tape    = p->io_ticks_tape;
     st.io_ticks_printer = p->io_ticks_printer;
     st.io_count         = p->io_count;
-    st.completed = (p->completion_tick >= 0) ? 1 : 0;
-    st.response  = (p->first_cpu_tick >= 0) ? p->first_cpu_tick - p->arrival_tick : -1;
+    st.completed        = (p->completion_tick >= 0) ? 1 : 0;
+    st.response         = (p->first_cpu_tick >= 0) ? p->first_cpu_tick - p->arrival_tick : -1;
     if (st.completed) {
         st.turnaround = p->completion_tick - p->arrival_tick;
         st.waiting    = st.turnaround - st.service - st.io_ticks;

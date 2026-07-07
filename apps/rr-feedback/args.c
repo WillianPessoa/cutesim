@@ -5,16 +5,16 @@
 #include <string.h>
 
 static SimConfig default_config(void) {
-    SimConfig cfg          = { 0 };
-    cfg.quantum_hi         = 3;
-    cfg.quantum_lo         = 6;
-    cfg.seed               = 42;
-    cfg.run_mode           = RUN_BATCH;
-    cfg.process_count      = 5;
-    cfg.service_duration   = (Duration){ 5, 15 };
-    cfg.disk_duration      = (Duration){ 5, 5 };
-    cfg.tape_duration      = (Duration){ 8, 8 };
-    cfg.printer_duration   = (Duration){ 12, 12 };
+    SimConfig cfg        = { 0 };
+    cfg.quantum_hi       = 3;
+    cfg.quantum_lo       = 6;
+    cfg.seed             = 42;
+    cfg.run_mode         = RUN_BATCH;
+    cfg.process_count    = 5;
+    cfg.service_duration = (Duration){ 5, 15 };
+    cfg.disk_duration    = (Duration){ 5, 5 };
+    cfg.tape_duration    = (Duration){ 8, 8 };
+    cfg.printer_duration = (Duration){ 12, 12 };
     return cfg;
 }
 
@@ -77,7 +77,7 @@ static IoMode parse_io_mode(const char *str) {
 /* Returns 0 and stores the value in *out when str is a valid double with no trailing junk.
    Returns -1 on non-numeric input or trailing characters. */
 static int parse_double_strict(const char *str, double *out) {
-    char  *end = NULL;
+    char *end  = NULL;
     double val = strtod(str, &end);
     if (end == str || *end != '\0') {
         return -1;
@@ -88,11 +88,26 @@ static int parse_double_strict(const char *str, double *out) {
 
 /* Returns 0 and stores the ArrivalMode in *out.  Returns -1 on unknown string. */
 static int parse_arrival_mode_str(const char *str, ArrivalMode *out) {
-    if (strcmp(str, "batch") == 0)     { *out = ARRIVAL_BATCH;     return 0; }
-    if (strcmp(str, "bernoulli") == 0) { *out = ARRIVAL_BERNOULLI; return 0; }
-    if (strcmp(str, "geometric") == 0) { *out = ARRIVAL_GEOMETRIC; return 0; }
-    if (strcmp(str, "poisson") == 0)   { *out = ARRIVAL_POISSON;   return 0; }
-    if (strcmp(str, "uniform") == 0)   { *out = ARRIVAL_UNIFORM;   return 0; }
+    if (strcmp(str, "batch") == 0) {
+        *out = ARRIVAL_BATCH;
+        return 0;
+    }
+    if (strcmp(str, "bernoulli") == 0) {
+        *out = ARRIVAL_BERNOULLI;
+        return 0;
+    }
+    if (strcmp(str, "geometric") == 0) {
+        *out = ARRIVAL_GEOMETRIC;
+        return 0;
+    }
+    if (strcmp(str, "poisson") == 0) {
+        *out = ARRIVAL_POISSON;
+        return 0;
+    }
+    if (strcmp(str, "uniform") == 0) {
+        *out = ARRIVAL_UNIFORM;
+        return 0;
+    }
     return -1;
 }
 
@@ -100,7 +115,7 @@ static int parse_arrival_mode_str(const char *str, ArrivalMode *out) {
    Returns -1 on floats, trailing junk, or empty input. */
 static int parse_int_strict(const char *str, int *out) {
     char *end = NULL;
-    long  val = strtol(str, &end, 10);
+    long val  = strtol(str, &end, 10);
     if (end == str || *end != '\0') {
         return -1;
     }
@@ -109,11 +124,11 @@ static int parse_int_strict(const char *str, int *out) {
 }
 
 SimConfig parse_args(int argc, char **argv, int *error) {
-    *error              = 0;
-    SimConfig cfg       = default_config();
-    int disk_set        = 0;
-    int tape_set        = 0;
-    int printer_set     = 0;
+    *error               = 0;
+    SimConfig cfg        = default_config();
+    int disk_set         = 0;
+    int tape_set         = 0;
+    int printer_set      = 0;
     int arrival_mode_set = 0;
     int arrival_rate_set = 0;
 
@@ -124,41 +139,74 @@ SimConfig parse_args(int argc, char **argv, int *error) {
     while ((c = getopt_long(argc, argv, "n:iht", long_opts, NULL)) != -1) {
         switch (c) {
         case 'H':
-            if (parse_int_strict(optarg, &cfg.quantum_hi) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.quantum_hi) != 0) {
+                *error = 1;
+                return cfg;
+            }
             break;
         case 'L':
-            if (parse_int_strict(optarg, &cfg.quantum_lo) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.quantum_lo) != 0) {
+                *error = 1;
+                return cfg;
+            }
             break;
         case 'c':
-            if (parse_int_strict(optarg, &cfg.process_count) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.process_count) != 0) {
+                *error = 1;
+                return cfg;
+            }
             break;
         case 'a':
-            if (parse_int_strict(optarg, &cfg.arrival_rate) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.arrival_rate) != 0) {
+                *error = 1;
+                return cfg;
+            }
             arrival_rate_set = 1;
             break;
         case 8:
-            if (parse_arrival_mode_str(optarg, &cfg.arrival_mode) != 0) { *error = 1; return cfg; }
+            if (parse_arrival_mode_str(optarg, &cfg.arrival_mode) != 0) {
+                *error = 1;
+                return cfg;
+            }
             arrival_mode_set = 1;
             break;
         case 9:
-            if (parse_double_strict(optarg, &cfg.arrival_lambda) != 0) { *error = 1; return cfg; }
+            if (parse_double_strict(optarg, &cfg.arrival_lambda) != 0) {
+                *error = 1;
+                return cfg;
+            }
             break;
         case 10:
-            if (parse_int_strict(optarg, &cfg.arrival_interval) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.arrival_interval) != 0) {
+                *error = 1;
+                return cfg;
+            }
             break;
         case 'p':
-            if (parse_int_strict(optarg, &cfg.p_io) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.p_io) != 0) {
+                *error = 1;
+                return cfg;
+            }
             break;
         case 'D':
-            if (parse_int_strict(optarg, &cfg.p_disk) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.p_disk) != 0) {
+                *error = 1;
+                return cfg;
+            }
             disk_set = 1;
             break;
         case 'T':
-            if (parse_int_strict(optarg, &cfg.p_tape) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.p_tape) != 0) {
+                *error = 1;
+                return cfg;
+            }
             tape_set = 1;
             break;
         case 'P':
-            if (parse_int_strict(optarg, &cfg.p_printer) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.p_printer) != 0) {
+                *error = 1;
+                return cfg;
+            }
             printer_set = 1;
             break;
         case 1:
@@ -184,12 +232,18 @@ SimConfig parse_args(int argc, char **argv, int *error) {
             break;
         case 's': {
             int v;
-            if (parse_int_strict(optarg, &v) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &v) != 0) {
+                *error = 1;
+                return cfg;
+            }
             cfg.seed = (unsigned)v;
             break;
         }
         case 'n':
-            if (parse_int_strict(optarg, &cfg.steps) != 0) { *error = 1; return cfg; }
+            if (parse_int_strict(optarg, &cfg.steps) != 0) {
+                *error = 1;
+                return cfg;
+            }
             cfg.run_mode = RUN_STEPS;
             break;
         case 't':
@@ -261,9 +315,8 @@ SimConfig parse_args(int argc, char **argv, int *error) {
         cfg.p_tape    = 33;
         cfg.p_printer = 33;
     } else if (n_explicit < 3) {
-        int assigned = (disk_set ? cfg.p_disk : 0)
-                     + (tape_set ? cfg.p_tape : 0)
-                     + (printer_set ? cfg.p_printer : 0);
+        int assigned = (disk_set ? cfg.p_disk : 0) + (tape_set ? cfg.p_tape : 0) +
+                       (printer_set ? cfg.p_printer : 0);
         int rem = 100 - assigned;
         if (rem < 0) {
             *error = 1;
@@ -303,8 +356,7 @@ SimConfig parse_args(int argc, char **argv, int *error) {
 
     /* An I/O burst of 0 ticks is meaningless — the process would return on the
        very next tick without ever occupying the device. */
-    if (cfg.disk_duration.min < 1 || cfg.tape_duration.min < 1 ||
-        cfg.printer_duration.min < 1) {
+    if (cfg.disk_duration.min < 1 || cfg.tape_duration.min < 1 || cfg.printer_duration.min < 1) {
         *error = 1;
         return cfg;
     }
@@ -318,13 +370,22 @@ SimConfig parse_args(int argc, char **argv, int *error) {
     switch (cfg.arrival_mode) {
     case ARRIVAL_BERNOULLI:
     case ARRIVAL_GEOMETRIC:
-        if (cfg.arrival_rate <= 0) { *error = 1; return cfg; }
+        if (cfg.arrival_rate <= 0) {
+            *error = 1;
+            return cfg;
+        }
         break;
     case ARRIVAL_POISSON:
-        if (!(cfg.arrival_lambda > 0.0)) { *error = 1; return cfg; }
+        if (!(cfg.arrival_lambda > 0.0)) {
+            *error = 1;
+            return cfg;
+        }
         break;
     case ARRIVAL_UNIFORM:
-        if (cfg.arrival_interval <= 0) { *error = 1; return cfg; }
+        if (cfg.arrival_interval <= 0) {
+            *error = 1;
+            return cfg;
+        }
         break;
     case ARRIVAL_BATCH:
         break;

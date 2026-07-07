@@ -10,18 +10,17 @@
 
 Q_IMPORT_QML_PLUGIN(CuteSim_ViewerPlugin)
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     app.setApplicationName("CuteSim");
     app.setOrganizationName("cutesim");
 
     /* BUG-24: exit cleanly on SIGINT/SIGTERM so destructors run and the
        spawned rr-feedback dies with the viewer instead of lingering. */
-    std::signal(SIGINT,  [](int) { QCoreApplication::quit(); });
+    std::signal(SIGINT, [](int) { QCoreApplication::quit(); });
     std::signal(SIGTERM, [](int) { QCoreApplication::quit(); });
 
-    SimController  controller;
+    SimController controller;
     ScenarioBridge scenarioBridge;
 
     QQmlApplicationEngine engine;
@@ -29,8 +28,9 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("scenarioBridge", &scenarioBridge);
     engine.loadFromModule("CuteSim.Viewer", "Main");
 
-    if (engine.rootObjects().isEmpty())
+    if (engine.rootObjects().isEmpty()) {
         return 1;
+    }
 
     return app.exec();
 }

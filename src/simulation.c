@@ -255,9 +255,13 @@ void sim_step(Simulation *s) {
             Process *p = node->data;
             if (mode == IO_MODE_CONCURRENT) {
                 p->io_ticks++;
-                if (dev_types[d] == DEVICE_DISK)         p->io_ticks_disk++;
-                else if (dev_types[d] == DEVICE_TAPE)    p->io_ticks_tape++;
-                else                                     p->io_ticks_printer++;
+                if (dev_types[d] == DEVICE_DISK) {
+                    p->io_ticks_disk++;
+                } else if (dev_types[d] == DEVICE_TAPE) {
+                    p->io_ticks_tape++;
+                } else {
+                    p->io_ticks_printer++;
+                }
                 p->io_remaining--;
                 if (p->io_remaining > 0) {
                     add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
@@ -265,9 +269,13 @@ void sim_step(Simulation *s) {
             } else {
                 if (node == q->head) {
                     p->io_ticks++;
-                    if (dev_types[d] == DEVICE_DISK)         p->io_ticks_disk++;
-                    else if (dev_types[d] == DEVICE_TAPE)    p->io_ticks_tape++;
-                    else                                     p->io_ticks_printer++;
+                    if (dev_types[d] == DEVICE_DISK) {
+                        p->io_ticks_disk++;
+                    } else if (dev_types[d] == DEVICE_TAPE) {
+                        p->io_ticks_tape++;
+                    } else {
+                        p->io_ticks_printer++;
+                    }
                     p->io_remaining--;
                     if (p->io_remaining > 0) {
                         add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
@@ -357,8 +365,8 @@ void sim_step(Simulation *s) {
             s->last_io_device       = dev;
             s->last_io_quantum_used = s->quantum_used;
             s->last_io_priority     = p->priority;
-            s->running = NULL;
-            fired_io   = 1;
+            s->running              = NULL;
+            fired_io                = 1;
         }
 
         /* 5b. Check random I/O (fires before the CPU tick) */
@@ -374,8 +382,8 @@ void sim_step(Simulation *s) {
             s->last_io_device       = dev;
             s->last_io_quantum_used = s->quantum_used;
             s->last_io_priority     = p->priority;
-            s->running = NULL;
-            fired_io   = 1;
+            s->running              = NULL;
+            fired_io                = 1;
         }
 
         /* 5c. CPU tick runs only when no I/O fired this step */
@@ -391,8 +399,8 @@ void sim_step(Simulation *s) {
                 s->last_completed              = p;
                 s->last_completed_quantum_used = s->quantum_used;
                 s->last_completed_priority     = p->priority;
-                s->running      = NULL;
-                s->quantum_used = 0;
+                s->running                     = NULL;
+                s->quantum_used                = 0;
             } else {
                 int quantum =
                     (p->priority == PRIORITY_HIGH) ? s->cfg.quantum_hi : s->cfg.quantum_lo;

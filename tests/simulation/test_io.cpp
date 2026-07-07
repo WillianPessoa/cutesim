@@ -271,18 +271,18 @@ TEST(PerDeviceIo, DiskTicksCountedInDiskField) {
     cfg.io_mode_disk               = IO_MODE_CONCURRENT;
     Simulation *s                  = sim_create(cfg);
 
-    Process *p       = process_create(1, 0, 0);
-    p->status        = PROC_BLOCKED;
-    p->io_remaining  = DISK_DURATION;
+    Process *p      = process_create(1, 0, 0);
+    p->status       = PROC_BLOCKED;
+    p->io_remaining = DISK_DURATION;
     queue_enqueue(&s->disk_queue, p);
     sim_add_process(s, p);
     s->pending_count = 0;
 
     sim_run(s, DISK_DURATION);
 
-    EXPECT_EQ(p->io_ticks,         DISK_DURATION);
-    EXPECT_EQ(p->io_ticks_disk,    DISK_DURATION);
-    EXPECT_EQ(p->io_ticks_tape,    0);
+    EXPECT_EQ(p->io_ticks, DISK_DURATION);
+    EXPECT_EQ(p->io_ticks_disk, DISK_DURATION);
+    EXPECT_EQ(p->io_ticks_tape, 0);
     EXPECT_EQ(p->io_ticks_printer, 0);
 
     sim_destroy(s);
@@ -299,13 +299,13 @@ TEST(PerDeviceIo, TapeAndPrinterTicksCountedSeparately) {
     cfg.io_mode_printer               = IO_MODE_CONCURRENT;
     Simulation *s                     = sim_create(cfg);
 
-    Process *pt = process_create(1, 0, 0);
-    Process *pp = process_create(2, 0, 1);
-    pt->status        = PROC_BLOCKED;
-    pp->status        = PROC_BLOCKED;
-    pt->io_remaining  = TAPE_DURATION;
-    pp->io_remaining  = PRINTER_DURATION;
-    queue_enqueue(&s->tape_queue,    pt);
+    Process *pt      = process_create(1, 0, 0);
+    Process *pp      = process_create(2, 0, 1);
+    pt->status       = PROC_BLOCKED;
+    pp->status       = PROC_BLOCKED;
+    pt->io_remaining = TAPE_DURATION;
+    pp->io_remaining = PRINTER_DURATION;
+    queue_enqueue(&s->tape_queue, pt);
     queue_enqueue(&s->printer_queue, pp);
     sim_add_process(s, pt);
     sim_add_process(s, pp);
@@ -313,12 +313,12 @@ TEST(PerDeviceIo, TapeAndPrinterTicksCountedSeparately) {
 
     sim_run(s, PRINTER_DURATION); /* long enough for both to finish */
 
-    EXPECT_EQ(pt->io_ticks_disk,    0);
-    EXPECT_EQ(pt->io_ticks_tape,    TAPE_DURATION);
+    EXPECT_EQ(pt->io_ticks_disk, 0);
+    EXPECT_EQ(pt->io_ticks_tape, TAPE_DURATION);
     EXPECT_EQ(pt->io_ticks_printer, 0);
 
-    EXPECT_EQ(pp->io_ticks_disk,    0);
-    EXPECT_EQ(pp->io_ticks_tape,    0);
+    EXPECT_EQ(pp->io_ticks_disk, 0);
+    EXPECT_EQ(pp->io_ticks_tape, 0);
     EXPECT_EQ(pp->io_ticks_printer, PRINTER_DURATION);
 
     sim_destroy(s);

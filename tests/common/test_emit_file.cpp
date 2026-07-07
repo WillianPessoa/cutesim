@@ -6,9 +6,9 @@
 #include <vector>
 
 extern "C" {
-#include "emit_file.h"
-#include "cutesim/simulation.h"
 #include "cutesim/process.h"
+#include "cutesim/simulation.h"
+#include "emit_file.h"
 }
 
 static SimConfig base_cfg() {
@@ -45,7 +45,7 @@ TEST(EmitFile, OneLinePerStep) {
     Simulation *s = sim_create(base_cfg());
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 9;
     sim_add_process(s, p);
 
@@ -73,7 +73,7 @@ TEST(EmitFile, EachLineIsJsonObject) {
     Simulation *s = sim_create(base_cfg());
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 6;
     sim_add_process(s, p);
 
@@ -88,7 +88,7 @@ TEST(EmitFile, EachLineIsJsonObject) {
     auto lines = read_lines(f);
     for (const auto &line : lines) {
         EXPECT_EQ(line.front(), '{') << "line does not start with '{'";
-        EXPECT_EQ(line.back(), '}')  << "line does not end with '}'";
+        EXPECT_EQ(line.back(), '}') << "line does not end with '}'";
     }
 
     fclose(f);
@@ -103,7 +103,7 @@ TEST(EmitFile, TickNumbersAreSequential) {
     Simulation *s = sim_create(base_cfg());
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 12;
     sim_add_process(s, p);
 
@@ -138,7 +138,7 @@ TEST(EmitFile, FinalLineMarksDone) {
     Simulation *s = sim_create(base_cfg());
     ASSERT_NE(s, nullptr);
 
-    Process *p       = process_create(0, 0, 0);
+    Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 3;
     sim_add_process(s, p);
 

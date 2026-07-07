@@ -12,11 +12,10 @@
    parse() fills defaults matching the binary's default_config() before
    applying the text, so the editor form shows the effective values for keys
    a file omits. */
-class ScenarioBridge : public QObject
-{
+class ScenarioBridge : public QObject {
     Q_OBJECT
 
-public:
+  public:
     explicit ScenarioBridge(QObject *parent = nullptr);
 
     /* Parse scenario text. Returns:
@@ -34,7 +33,7 @@ public:
     Q_INVOKABLE QVariantMap summarize(const QString &pathOrUrl) const;
 
     Q_INVOKABLE QString readFile(const QString &pathOrUrl) const;
-    Q_INVOKABLE bool    writeFile(const QString &pathOrUrl, const QString &text) const;
+    Q_INVOKABLE bool writeFile(const QString &pathOrUrl, const QString &text) const;
 
     /* Scenarios shipped with the application (the scenarios/ directory next
        to the binary, or in the source tree during development; CUTESIM_SCENARIOS

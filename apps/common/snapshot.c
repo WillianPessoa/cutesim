@@ -11,8 +11,8 @@
 
 typedef struct {
     char *buf;
-    int   pos;
-    int   cap;
+    int pos;
+    int cap;
 } Wr;
 
 static void wr(Wr *w, const char *fmt, ...) {
@@ -36,29 +36,39 @@ static void wr(Wr *w, const char *fmt, ...) {
 
 static const char *event_type_str(SimEventType t) {
     switch (t) {
-    case SIM_EVT_ARRIVED:   return "arrived";
-    case SIM_EVT_SCHEDULED: return "scheduled";
-    case SIM_EVT_PREEMPTED: return "preempted";
-    case SIM_EVT_IO_START:  return "io_start";
-    case SIM_EVT_IO_TICK:   return "io_tick";
-    case SIM_EVT_IO_RETURN: return "io_return";
-    case SIM_EVT_COMPLETED: return "completed";
-    default:                return "unknown";
+    case SIM_EVT_ARRIVED:
+        return "arrived";
+    case SIM_EVT_SCHEDULED:
+        return "scheduled";
+    case SIM_EVT_PREEMPTED:
+        return "preempted";
+    case SIM_EVT_IO_START:
+        return "io_start";
+    case SIM_EVT_IO_TICK:
+        return "io_tick";
+    case SIM_EVT_IO_RETURN:
+        return "io_return";
+    case SIM_EVT_COMPLETED:
+        return "completed";
+    default:
+        return "unknown";
     }
 }
 
 static const char *device_str(int d) {
     switch (d) {
-    case DEVICE_DISK:    return "disk";
-    case DEVICE_TAPE:    return "tape";
-    case DEVICE_PRINTER: return "printer";
-    default:             return "unknown";
+    case DEVICE_DISK:
+        return "disk";
+    case DEVICE_TAPE:
+        return "tape";
+    case DEVICE_PRINTER:
+        return "printer";
+    default:
+        return "unknown";
     }
 }
 
-static const char *queue_str(int priority) {
-    return (priority == PRIORITY_HIGH) ? "high" : "low";
-}
+static const char *queue_str(int priority) { return (priority == PRIORITY_HIGH) ? "high" : "low"; }
 
 /* -------------------------------------------------------------------------
  * Section writers
@@ -141,10 +151,9 @@ static void write_finished(Wr *w, const Process *p) {
        "\"service_time\":%d,\"cpu_time_used\":%d,"
        "\"io_disk\":%d,\"io_tape\":%d,\"io_printer\":%d,\"io_total\":%d,\"io_count\":%d,"
        "\"wait_time\":%d,\"turnaround\":%d,\"response_time\":%d}",
-       st.pid, st.arrival, p->completion_tick,
-       st.service, st.service,
-       st.io_ticks_disk, st.io_ticks_tape, st.io_ticks_printer, st.io_ticks, st.io_count,
-       st.waiting, st.turnaround, st.response);
+       st.pid, st.arrival, p->completion_tick, st.service, st.service, st.io_ticks_disk,
+       st.io_ticks_tape, st.io_ticks_printer, st.io_ticks, st.io_count, st.waiting, st.turnaround,
+       st.response);
 }
 
 /* -------------------------------------------------------------------------
@@ -158,26 +167,26 @@ int snapshot_to_json(const Simulation *s, char *buf, size_t bufsz) {
 
     /* cpu */
     if (s->running) {
-        int qmax           = (s->running->priority == PRIORITY_HIGH) ? s->cfg.quantum_hi
-                                                                     : s->cfg.quantum_lo;
-        int remaining      = qmax - s->quantum_used;
+        int qmax = (s->running->priority == PRIORITY_HIGH) ? s->cfg.quantum_hi : s->cfg.quantum_lo;
+        int remaining       = qmax - s->quantum_used;
         int burst_remaining = (s->running->cpu_burst_total > 0)
                                   ? s->running->cpu_burst_total - s->running->cpu_ticks
                                   : -1;
         wr(&w,
            "\"cpu\":{\"pid\":%d,\"remaining\":%d,\"quantum_used\":%d,\"quantum_max\":%d,"
            "\"queue\":\"%s\",\"burst_remaining\":%d},",
-           s->running->pid, remaining, s->quantum_used, qmax,
-           queue_str(s->running->priority), burst_remaining);
+           s->running->pid, remaining, s->quantum_used, qmax, queue_str(s->running->priority),
+           burst_remaining);
     } else if (s->last_preempted) {
         /* Preemption tick: process was RUNNING this tick but moved to low queue
            before snapshot. Show it as cpu with remaining=0 so the viewer
            renders the correct PID and full quantum bar instead of idle. */
-        int qmax           = (s->last_preempted_priority == PRIORITY_HIGH) ? s->cfg.quantum_hi
-                                                                           : s->cfg.quantum_lo;
-        int burst_remaining = (s->last_preempted->cpu_burst_total > 0)
-                                  ? s->last_preempted->cpu_burst_total - s->last_preempted->cpu_ticks
-                                  : -1;
+        int qmax =
+            (s->last_preempted_priority == PRIORITY_HIGH) ? s->cfg.quantum_hi : s->cfg.quantum_lo;
+        int burst_remaining =
+            (s->last_preempted->cpu_burst_total > 0)
+                ? s->last_preempted->cpu_burst_total - s->last_preempted->cpu_ticks
+                : -1;
         wr(&w,
            "\"cpu\":{\"pid\":%d,\"remaining\":%d,\"quantum_used\":%d,\"quantum_max\":%d,"
            "\"queue\":\"%s\",\"burst_remaining\":%d,\"ghost\":\"preempted\"},",
@@ -186,32 +195,29 @@ int snapshot_to_json(const Simulation *s, char *buf, size_t bufsz) {
     } else if (s->last_completed) {
         /* Completion tick: the process ran its final burst tick this tick.
            Show it as cpu so the viewer does not render an idle tick. */
-        int qmax = (s->last_completed_priority == PRIORITY_HIGH) ? s->cfg.quantum_hi
-                                                                 : s->cfg.quantum_lo;
+        int qmax =
+            (s->last_completed_priority == PRIORITY_HIGH) ? s->cfg.quantum_hi : s->cfg.quantum_lo;
         wr(&w,
            "\"cpu\":{\"pid\":%d,\"remaining\":%d,\"quantum_used\":%d,\"quantum_max\":%d,"
            "\"queue\":\"%s\",\"burst_remaining\":%d,\"ghost\":\"completed\"},",
            s->last_completed->pid, qmax - s->last_completed_quantum_used,
-           s->last_completed_quantum_used, qmax,
-           queue_str(s->last_completed_priority), 0);
+           s->last_completed_quantum_used, qmax, queue_str(s->last_completed_priority), 0);
     } else if (s->last_io_started) {
         /* I/O departure tick: the process left for a device queue before the
            CPU tick (Model A), so nothing ran — but a bare idle hides where the
            process went. Show it with an io_start ghost; the viewer keeps the
            Gantt truthful (idle) and renders a "→ <device> queue" tag. */
-        int qmax           = (s->last_io_priority == PRIORITY_HIGH) ? s->cfg.quantum_hi
-                                                                    : s->cfg.quantum_lo;
-        int burst_remaining = (s->last_io_started->cpu_burst_total > 0)
-                                  ? s->last_io_started->cpu_burst_total -
-                                        s->last_io_started->cpu_ticks
-                                  : -1;
+        int qmax = (s->last_io_priority == PRIORITY_HIGH) ? s->cfg.quantum_hi : s->cfg.quantum_lo;
+        int burst_remaining =
+            (s->last_io_started->cpu_burst_total > 0)
+                ? s->last_io_started->cpu_burst_total - s->last_io_started->cpu_ticks
+                : -1;
         wr(&w,
            "\"cpu\":{\"pid\":%d,\"remaining\":%d,\"quantum_used\":%d,\"quantum_max\":%d,"
            "\"queue\":\"%s\",\"burst_remaining\":%d,\"ghost\":\"io_start\","
            "\"device\":\"%s\"},",
-           s->last_io_started->pid, qmax - s->last_io_quantum_used,
-           s->last_io_quantum_used, qmax, queue_str(s->last_io_priority),
-           burst_remaining, device_str((int)s->last_io_device));
+           s->last_io_started->pid, qmax - s->last_io_quantum_used, s->last_io_quantum_used, qmax,
+           queue_str(s->last_io_priority), burst_remaining, device_str((int)s->last_io_device));
     } else {
         wr(&w, "\"cpu\":null,");
     }
@@ -256,13 +262,11 @@ int snapshot_to_json(const Simulation *s, char *buf, size_t bufsz) {
     wr(&w, "],");
 
     /* stats */
-    SimStats st = stats_compute(
-        (const Process *const *)s->all_processes, s->all_count, s->tick);
+    SimStats st = stats_compute((const Process *const *)s->all_processes, s->all_count, s->tick);
     wr(&w,
        "\"stats\":{\"cpu_utilization\":%.4f,\"throughput\":%.4f,"
        "\"avg_turnaround\":%.4f,\"avg_waiting\":%.4f,\"avg_response\":%.4f},",
-       st.cpu_utilization, st.throughput, st.avg_turnaround, st.avg_waiting,
-       st.avg_response);
+       st.cpu_utilization, st.throughput, st.avg_turnaround, st.avg_waiting, st.avg_response);
 
     /* done */
     wr(&w, "\"done\":%s}", sim_is_done(s) ? "true" : "false");
