@@ -98,6 +98,13 @@ Item {
                 bottom: root.minimumValue
                 top: root.maximumValue
             }
+            onTextChanged: {
+                var v = parseInt(text);
+                if (!isNaN(v)) {
+                    v = Math.max(root.minimumValue, Math.min(root.maximumValue, v));
+                    root.value = v;
+                }
+            }
             onEditingFinished: {
                 var v = parseInt(text);
                 if (isNaN(v))
