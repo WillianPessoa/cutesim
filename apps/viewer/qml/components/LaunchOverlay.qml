@@ -543,6 +543,28 @@ Item {
                                     onValueChanged: root.arrivalInterval = value
                                 }
                             }
+                            Text {
+                                visible: root.arrivalMode === "bernoulli" || root.arrivalMode
+                                         === "poisson"
+                                color: Theme.textDim
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                text: {
+                                    if (root.arrivalMode === "bernoulli") {
+                                        var interval = Math.round(100 / root.arrivalRate);
+                                        return "~1 arrival every " + interval + " tick" + (interval
+                                                                                           !== 1 ? "s" :
+                                                                                                   "");
+                                    }
+                                    if (root.arrivalMode === "poisson") {
+                                        var lambda = root.arrivalLambdaPct / 100.0;
+                                        var every = Math.round(1.0 / lambda);
+                                        return "λ = " + lambda.toFixed(2) + " · ~1 arrival every "
+                                                + every + " tick" + (every !== 1 ? "s" : "");
+                                    }
+                                    return "";
+                                }
+                            }
                         }
                     }
 
