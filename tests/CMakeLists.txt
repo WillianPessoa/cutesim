@@ -3,8 +3,14 @@ FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG        v1.15.2
+    SYSTEM
 )
+# Third-party code is not ours to keep warning-clean: silence warnings while
+# GTest's directories are created (-w also mutes AppleClang's default-on
+# warnings), then restore our flags for the test subdirectories below.
+set_property(DIRECTORY PROPERTY COMPILE_OPTIONS -w)
 FetchContent_MakeAvailable(googletest)
+set_property(DIRECTORY PROPERTY COMPILE_OPTIONS ${CUTESIM_WARNING_FLAGS})
 include(GoogleTest)
 
 add_subdirectory(cli)

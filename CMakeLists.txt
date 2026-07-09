@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.21)
+# 3.25 for FetchContent SYSTEM (keeps -Wall/-Wextra out of GTest headers)
+cmake_minimum_required(VERSION 3.25)
 
 project(
     "cutesim"
@@ -13,6 +14,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+
+set(CUTESIM_WARNING_FLAGS -Wall -Wextra)
+add_compile_options(${CUTESIM_WARNING_FLAGS})
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -38,6 +42,7 @@ target_sources(cutesim_lib PRIVATE
 )
 target_include_directories(cutesim_lib PUBLIC include)
 target_compile_features(cutesim_lib PRIVATE c_std_11)
+target_compile_options(cutesim_lib PRIVATE -Wconversion)
 
 include(CTest)
 
