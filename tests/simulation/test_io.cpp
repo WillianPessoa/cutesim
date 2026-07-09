@@ -34,7 +34,7 @@ TEST(IoTrigger, ScriptedIoMovesProcessToDeviceQueue) {
     Simulation *s                  = sim_create(cfg);
 
     Process *p       = process_create(1, 0, 0);
-    ScriptedIO ev    = { IO_FIRES_AT_TICK, DEVICE_DISK };
+    ScriptedIO ev    = { IO_FIRES_AT_TICK, DEVICE_DISK, 0, {} };
     p->io_script     = &ev;
     p->io_script_len = 1;
 
@@ -57,7 +57,7 @@ TEST(IoTrigger, IoRemainingSetOnTrigger) {
     Simulation *s                  = sim_create(cfg);
 
     Process *p       = process_create(1, 0, 0);
-    ScriptedIO ev    = { IO_FIRES_AT_TICK, DEVICE_DISK };
+    ScriptedIO ev    = { IO_FIRES_AT_TICK, DEVICE_DISK, 0, {} };
     p->io_script     = &ev;
     p->io_script_len = 1;
 
@@ -80,7 +80,7 @@ TEST(ScriptedIo, TriggerIsRelativeToCpuService) {
     /* Arrives at global tick 3, so the global clock never equals the service tick. */
     Process *p         = process_create(1, /*arrival*/ 3, /*seq*/ 0);
     p->cpu_burst_total = 5;
-    ScriptedIO ev      = { /*service_tick*/ 2, DEVICE_DISK };
+    ScriptedIO ev      = { /*service_tick*/ 2, DEVICE_DISK, 0, {} };
     p->io_script       = &ev;
     p->io_script_len   = 1;
 
@@ -103,7 +103,7 @@ TEST(ScriptedIo, DurationOverrideIgnoresGlobal) {
 
     Process *p         = process_create(1, /*arrival*/ 0, /*seq*/ 0);
     p->cpu_burst_total = 5;
-    ScriptedIO ev      = { /*service_tick*/ 1, DEVICE_DISK };
+    ScriptedIO ev      = { /*service_tick*/ 1, DEVICE_DISK, 0, {} };
     ev.has_duration    = 1;
     ev.duration        = { 7, 7 }; /* override = 7, not the global 2 */
     p->io_script       = &ev;

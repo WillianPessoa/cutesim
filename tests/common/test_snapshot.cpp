@@ -86,7 +86,7 @@ TEST(Snapshot, FinishedProcess) {
     Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 5;
     /* scripted disk I/O after 1 CPU tick */
-    ScriptedIO ev    = { 1, DEVICE_DISK };
+    ScriptedIO ev    = { 1, DEVICE_DISK, 0, {} };
     p->io_script     = &ev;
     p->io_script_len = 1;
     sim_add_process(s, p);
@@ -165,7 +165,7 @@ TEST(Snapshot, IoStartEventIncludesDeviceAndRemaining) {
 
     Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
-    ScriptedIO ev      = { 1, DEVICE_DISK };
+    ScriptedIO ev      = { 1, DEVICE_DISK, 0, {} };
     p->io_script       = &ev;
     p->io_script_len   = 1;
     sim_add_process(s, p);
@@ -317,7 +317,7 @@ TEST(Snapshot, IoStartTickCpuFieldIsNotNull) {
 
     Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
-    ScriptedIO ev      = { 1, DEVICE_DISK };
+    ScriptedIO ev      = { 1, DEVICE_DISK, 0, {} };
     p->io_script       = &ev;
     p->io_script_len   = 1;
     sim_add_process(s, p);
@@ -355,7 +355,7 @@ TEST(Snapshot, IoStartTickOmitsProcessFromDeviceQueue) {
 
     Process *p         = process_create(0, 0, 0);
     p->cpu_burst_total = 10;
-    ScriptedIO ev      = { 1, DEVICE_DISK };
+    ScriptedIO ev      = { 1, DEVICE_DISK, 0, {} };
     p->io_script       = &ev;
     p->io_script_len   = 1;
     sim_add_process(s, p);

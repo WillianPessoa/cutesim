@@ -29,7 +29,7 @@ static SimConfig test_config(void) {
 static Process *make_scripted(int pid, DeviceType dev) {
     Process *p         = process_create(pid, 0, 0);
     ScriptedIO *script = (ScriptedIO *)malloc(sizeof(ScriptedIO));
-    script[0]          = { IO_FIRES_AT_TICK, dev };
+    script[0]          = { IO_FIRES_AT_TICK, dev, 0, {} };
     p->io_script       = script;
     p->io_script_len   = 1;
     p->io_script_pos   = 0;
@@ -112,8 +112,8 @@ TEST(Feedback, IoCountIncrementedOnTrigger) {
     /* Two scripted I/O events on different devices */
     Process *p         = process_create(1, 0, 0);
     ScriptedIO *script = (ScriptedIO *)malloc(2 * sizeof(ScriptedIO));
-    script[0]          = { IO_FIRES_AT_TICK, DEVICE_DISK };
-    script[1]          = { SECOND_IO_TICK, DEVICE_TAPE };
+    script[0]          = { IO_FIRES_AT_TICK, DEVICE_DISK, 0, {} };
+    script[1]          = { SECOND_IO_TICK, DEVICE_TAPE, 0, {} };
     p->io_script       = script;
     p->io_script_len   = 2;
 

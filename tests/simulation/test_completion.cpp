@@ -6,10 +6,8 @@ extern "C" {
 
 #include "../test_describe.h"
 
-static const int BURST_LEN        = 5;
-static const int LARGE_QUANTUM    = 20; /* larger than any burst so quantum never preempts */
-static const int DISK_DURATION    = 2;
-static const int IO_FIRES_AT_TICK = 1;
+static const int BURST_LEN     = 5;
+static const int LARGE_QUANTUM = 20; /* larger than any burst so quantum never preempts */
 
 static SimConfig test_config(void) {
     SimConfig cfg    = {};
