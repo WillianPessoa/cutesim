@@ -1,5 +1,9 @@
 find_package(Qt6 REQUIRED COMPONENTS Quick Network)
-qt_standard_project_setup(REQUIRES 6.2)
+# 6.5 turns on QTP0001: QML module resources land under /qt/qml, which is on
+# the engine's default import path. Under 6.2 they sat at :/CuteSim/Viewer,
+# unreachable, and type resolution fell back to C++ registrations that drop
+# one composite type at random (BUG-26).
+qt_standard_project_setup(REQUIRES 6.5)
 
 # ── C++ backend library ────────────────────────────────────────────────────
 # Separating SimClient + SimController from the QML module and the executable

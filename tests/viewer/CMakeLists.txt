@@ -1,5 +1,5 @@
 find_package(Qt6 REQUIRED COMPONENTS Test QuickTest Quick)
-qt_standard_project_setup(REQUIRES 6.2)
+qt_standard_project_setup(REQUIRES 6.5) # QTP0001, see apps/viewer (BUG-26)
 
 # ── C++ unit tests for SimController ──────────────────────────────────────
 add_executable(test_sim_controller
