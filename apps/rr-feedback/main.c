@@ -206,6 +206,9 @@ int main(int argc, char *argv[]) {
     Simulation *sim = sim_create(cfg);
     if (!sim) {
         fprintf(stderr, "error: failed to create simulation\n");
+        if (emit_f) {
+            fclose(emit_f);
+        }
         scenario_free(&scenario);
         return 1;
     }
