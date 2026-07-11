@@ -177,7 +177,7 @@ int SimController::choosePort(const QVariantMap &params) {
     if (params.contains("port")) {
         return params.value("port").toInt();
     }
-    return 20000 + int(QRandomGenerator::global()->bounded(40000));
+    return 20000 + QRandomGenerator::global()->bounded(40000);
 }
 
 QString SimController::findBinary() {
@@ -316,7 +316,8 @@ void SimController::onSnapshot(const QJsonObject &snap, const QString &raw) {
 
     /* ── Events ──────────────────────────────────────────────────────── */
     m_events.clear();
-    for (const QJsonValue &ev : snap["events"].toArray()) {
+    const QJsonArray events = snap["events"].toArray();
+    for (const auto &ev : events) {
         QJsonObject e = ev.toObject();
         QVariantMap m;
         m["type"] = e["type"].toString();
@@ -455,7 +456,7 @@ void SimController::clearState() {
 QVariantList SimController::parseProcessArray(const QJsonArray &arr) {
     QVariantList list;
     list.reserve(arr.size());
-    for (const QJsonValue &v : arr) {
+    for (const auto &v : arr) {
         QJsonObject o = v.toObject();
         QVariantMap m;
         if (o.contains("pid")) {

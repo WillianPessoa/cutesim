@@ -31,7 +31,7 @@ void SimClient::onReadyRead() {
     m_buffer.append(m_socket->readAll());
 
     while (true) {
-        int idx = m_buffer.indexOf('\n');
+        qsizetype idx = m_buffer.indexOf('\n');
         if (idx < 0) {
             break;
         }
@@ -54,6 +54,6 @@ void SimClient::onReadyRead() {
     }
 }
 
-void SimClient::onErrorOccurred(QAbstractSocket::SocketError) {
+void SimClient::onErrorOccurred(QAbstractSocket::SocketError /*error*/) {
     emit errorOccurred(m_socket->errorString());
 }

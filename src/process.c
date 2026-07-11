@@ -42,7 +42,6 @@ int process_set_status(Process *p, ProcStatus new_status) {
         }
         return -1;
     case PROC_DONE:
-        return -1;
     default:
         return -1;
     }

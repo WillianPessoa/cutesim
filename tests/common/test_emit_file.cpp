@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -19,10 +20,19 @@ static SimConfig base_cfg() {
     return cfg;
 }
 
+/* fclose on scope exit — covers the early-return paths GTest assertions take */
+struct FileCloser {
+    void operator()(FILE *f) const { fclose(f); }
+};
+using FilePtr = std::unique_ptr<FILE, FileCloser>;
+
 /* Read all lines from a FILE* into a vector of strings. Rewinds before reading. */
 static std::vector<std::string> read_lines(FILE *f) {
     std::vector<std::string> lines;
-    rewind(f);
+    if (fseek(f, 0, SEEK_SET) != 0) {
+        ADD_FAILURE() << "fseek to start failed";
+        return lines;
+    }
     char buf[65536];
     while (fgets(buf, sizeof(buf), f)) {
         std::string line(buf);
@@ -49,19 +59,18 @@ TEST(EmitFile, OneLinePerStep) {
     p->cpu_burst_total = 9;
     sim_add_process(s, p);
 
-    FILE *f = tmpfile();
+    FilePtr f(tmpfile());
     ASSERT_NE(f, nullptr);
 
     static const int STEPS = 5;
     for (int i = 0; i < STEPS; i++) {
         sim_step(s);
-        EXPECT_EQ(emit_file_write(f, s), 0);
+        EXPECT_EQ(emit_file_write(f.get(), s), 0);
     }
 
-    auto lines = read_lines(f);
+    auto lines = read_lines(f.get());
     EXPECT_EQ((int)lines.size(), STEPS);
 
-    fclose(f);
     sim_destroy(s);
 }
 
@@ -77,21 +86,20 @@ TEST(EmitFile, EachLineIsJsonObject) {
     p->cpu_burst_total = 6;
     sim_add_process(s, p);
 
-    FILE *f = tmpfile();
+    FilePtr f(tmpfile());
     ASSERT_NE(f, nullptr);
 
     for (int i = 0; i < 4; i++) {
         sim_step(s);
-        emit_file_write(f, s);
+        emit_file_write(f.get(), s);
     }
 
-    auto lines = read_lines(f);
+    auto lines = read_lines(f.get());
     for (const auto &line : lines) {
         EXPECT_EQ(line.front(), '{') << "line does not start with '{'";
         EXPECT_EQ(line.back(), '}') << "line does not end with '}'";
     }
 
-    fclose(f);
     sim_destroy(s);
 }
 
@@ -107,16 +115,16 @@ TEST(EmitFile, TickNumbersAreSequential) {
     p->cpu_burst_total = 12;
     sim_add_process(s, p);
 
-    FILE *f = tmpfile();
+    FilePtr f(tmpfile());
     ASSERT_NE(f, nullptr);
 
     static const int STEPS = 6;
     for (int i = 0; i < STEPS; i++) {
         sim_step(s);
-        emit_file_write(f, s);
+        emit_file_write(f.get(), s);
     }
 
-    auto lines = read_lines(f);
+    auto lines = read_lines(f.get());
     ASSERT_EQ((int)lines.size(), STEPS);
 
     for (int i = 0; i < STEPS; i++) {
@@ -126,7 +134,6 @@ TEST(EmitFile, TickNumbersAreSequential) {
             << "line " << i << " missing " << expected;
     }
 
-    fclose(f);
     sim_destroy(s);
 }
 
@@ -142,15 +149,15 @@ TEST(EmitFile, FinalLineMarksDone) {
     p->cpu_burst_total = 3;
     sim_add_process(s, p);
 
-    FILE *f = tmpfile();
+    FilePtr f(tmpfile());
     ASSERT_NE(f, nullptr);
 
     while (!sim_is_done(s)) {
         sim_step(s);
-        emit_file_write(f, s);
+        emit_file_write(f.get(), s);
     }
 
-    auto lines = read_lines(f);
+    auto lines = read_lines(f.get());
     ASSERT_FALSE(lines.empty());
     EXPECT_NE(lines.back().find("\"done\":true"), std::string::npos);
 
@@ -160,6 +167,5 @@ TEST(EmitFile, FinalLineMarksDone) {
             << "line " << i << " should not be done yet";
     }
 
-    fclose(f);
     sim_destroy(s);
 }

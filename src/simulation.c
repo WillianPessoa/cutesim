@@ -86,7 +86,7 @@ static Queue *return_queue(Simulation *s, DeviceType dev) {
 
 #define INITIAL_CAP 8
 
-static int ensure_cap(void ***arr, int *count, int *cap) {
+static int ensure_cap(void ***arr, const int *count, int *cap) {
     if (*count < *cap) {
         return 0;
     }

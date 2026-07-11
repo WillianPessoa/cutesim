@@ -272,8 +272,6 @@ SimConfig parse_args(int argc, char **argv, int *error) {
             *error = 2;
             return cfg;
         case '?':
-            *error = 1;
-            return cfg;
         default:
             *error = 1;
             return cfg;

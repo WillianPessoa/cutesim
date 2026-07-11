@@ -12,8 +12,8 @@ Q_IMPORT_QML_PLUGIN(CuteSim_ViewerPlugin)
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
-    app.setApplicationName("CuteSim");
-    app.setOrganizationName("cutesim");
+    QGuiApplication::setApplicationName("CuteSim");
+    QGuiApplication::setOrganizationName("cutesim");
 
     /* BUG-24: exit cleanly on SIGINT/SIGTERM so destructors run and the
        spawned rr-feedback dies with the viewer instead of lingering. */
@@ -32,5 +32,5 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    return app.exec();
+    return QGuiApplication::exec();
 }

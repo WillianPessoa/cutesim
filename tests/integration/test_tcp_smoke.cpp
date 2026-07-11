@@ -17,7 +17,7 @@ namespace {
 
 constexpr int kPort = 19234;
 
-void batch_spawn(Simulation *sim, void *) {
+void batch_spawn(Simulation *sim, void * /*ctx*/) {
     /* Three processes, all arriving at tick 0, each with a small CPU burst. */
     for (int i = 0; i < 3; i++) {
         Process *p         = process_create(i + 1, 0, i);

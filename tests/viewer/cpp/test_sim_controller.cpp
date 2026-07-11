@@ -482,10 +482,10 @@ TEST_F(SimControllerTest, BuildArgsRandomDefaults) {
     EXPECT_TRUE(args.contains("--seed=42"));
     EXPECT_TRUE(args.contains("--serve=9000"));
     /* optional groups are omitted when their keys are absent */
-    EXPECT_FALSE(args.filter("--arrival-mode").size() > 0);
-    EXPECT_FALSE(args.filter("--p-disk").size() > 0);
-    EXPECT_FALSE(args.filter("--disk-duration").size() > 0);
-    EXPECT_FALSE(args.filter("--io-mode-disk").size() > 0);
+    EXPECT_TRUE(args.filter("--arrival-mode").isEmpty());
+    EXPECT_TRUE(args.filter("--p-disk").isEmpty());
+    EXPECT_TRUE(args.filter("--disk-duration").isEmpty());
+    EXPECT_TRUE(args.filter("--io-mode-disk").isEmpty());
 }
 
 TEST_F(SimControllerTest, BuildArgsRandomFullParams) {
@@ -511,7 +511,7 @@ TEST_F(SimControllerTest, BuildArgsRandomFullParams) {
     EXPECT_TRUE(args.contains("--io-mode-disk=queue"));
     EXPECT_TRUE(args.contains("--io-mode-printer=concurrent"));
     /* printer duration keys absent → flag omitted */
-    EXPECT_FALSE(args.filter("--printer-duration").size() > 0);
+    EXPECT_TRUE(args.filter("--printer-duration").isEmpty());
 }
 
 TEST_F(SimControllerTest, BuildArgsArrivalPoissonAndUniform) {
