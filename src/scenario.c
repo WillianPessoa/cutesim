@@ -371,7 +371,10 @@ int scenario_parse_file(const char *path, Scenario *out) {
         fclose(f);
         return -1;
     }
-    rewind(f);
+    if (fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return -1;
+    }
 
     char *buf = malloc((size_t)size + 1);
     if (!buf) {
@@ -380,7 +383,9 @@ int scenario_parse_file(const char *path, Scenario *out) {
     }
     size_t n = fread(buf, 1, (size_t)size, f);
     fclose(f);
-    buf[n] = '\0';
+    /* n <= size by fread's contract and buf holds size + 1 bytes; the analyzer
+       taints every file-derived value and cannot see that bound. */
+    buf[n] = '\0'; /* NOLINT(clang-analyzer-security.ArrayBound) */
 
     int rc = scenario_parse_string(buf, out);
     free(buf);
