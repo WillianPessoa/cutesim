@@ -1,0 +1,58 @@
+# Q2 — static analysis baseline. Runs via scripts/lint-cxx.sh (clang-tidy +
+# clazy over the debug preset's compile_commands.json).
+#
+# Disabled checks, each with a reason — keep this list justified:
+#   bugprone-easily-swappable-parameters   API-wide renames for little gain; params
+#                                          like (hi, lo) and (min, max) are idiomatic here
+#   readability-identifier-length          short names (i, q, p, io) are idiomatic in the C lib
+#   readability-magic-numbers              sim defaults/test literals would all need naming
+#   readability-braces-around-statements   single-line guards follow LLVM style
+#   readability-else-after-return          early-return style is a preference, not a defect
+#   readability-function-cognitive-complexity  flags the sim engine core; split is planned
+#                                          work, not lint-driven
+#   readability-uppercase-literal-suffix   1000u vs 1000U carries no information
+#   readability-math-missing-parentheses   a*b + c*d is unambiguous; parens add noise
+#   readability-redundant-access-specifiers  fires on the Qt idiom of separate
+#                                          `public:` / `public slots:` sections
+#   readability-isolate-declaration        pairs like `const char *ts, *te` are semantic
+#                                          (slice start/end) — splitting them hides that
+#   readability-convert-member-functions-to-static  every hit is a Q_INVOKABLE or a
+#                                          QuickTest hook that moc needs as instance member
+#   readability-avoid-nested-conditional-operator  cascaded chains (a ? x : b ? y : z)
+#                                          read fine and clang-format aligns them
+#   performance-enum-size                  packing enums into uint8_t buys nothing here
+#                                          and churns every declaration (96 hits)
+#   bugprone-multi-level-implicit-pointer-conversion  all hits are malloc/free/realloc of
+#                                          pointer arrays — standard C allocation idiom
+#   clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling  recommends
+#                                          Annex K *_s functions that macOS/glibc lack
+Checks: >
+  bugprone-*,
+  clang-analyzer-*,
+  performance-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-braces-around-statements,
+  -readability-else-after-return,
+  -readability-function-cognitive-complexity,
+  -readability-uppercase-literal-suffix,
+  -readability-math-missing-parentheses,
+  -readability-redundant-access-specifiers,
+  -readability-isolate-declaration,
+  -readability-convert-member-functions-to-static,
+  -readability-avoid-nested-conditional-operator,
+  -performance-enum-size,
+  -bugprone-multi-level-implicit-pointer-conversion,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '(include/cutesim|apps|src|tests)/'
+FormatStyle: file
+
+CheckOptions:
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+  # `if (ptr)` / `if (count)` are idiomatic in the C lib and Qt code alike
+  readability-implicit-bool-conversion.AllowPointerConditions: true
+  readability-implicit-bool-conversion.AllowIntegerConditions: true
