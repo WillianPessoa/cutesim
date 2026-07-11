@@ -1,7 +1,8 @@
 build/
 build-asan/
 .cache/
-/docs/
+/docs/*
+!/docs/lint-cxx-baseline.md
 
 # Editor / OS cruft
 .DS_Store
