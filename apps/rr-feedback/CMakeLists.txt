@@ -4,4 +4,6 @@ target_link_libraries(rr_feedback_args PUBLIC cutesim_lib)
 target_include_directories(rr_feedback_args PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(rr-feedback main.c)
-target_link_libraries(rr-feedback PRIVATE rr_feedback_args cutesim_common)
+# exp() in the Poisson sampler needs libm on Linux (part of libSystem on macOS)
+target_link_libraries(rr-feedback PRIVATE rr_feedback_args cutesim_common
+    $<$<PLATFORM_ID:Linux>:m>)
