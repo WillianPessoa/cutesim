@@ -194,6 +194,13 @@ QString SimController::findBinary() {
         return base + "/rr-feedback";
     }
 
+    /* Sibling target in the same build tree (<build>/apps/viewer →
+       <build>/apps/rr-feedback), whatever the build dir is called (BUG-29). */
+    QString sibling = QDir(base).filePath("../rr-feedback/rr-feedback");
+    if (QFileInfo::exists(sibling)) {
+        return QDir::cleanPath(sibling);
+    }
+
     QDir dir(base);
     for (int i = 0; i < 8; ++i) {
         QString c = dir.filePath("build/apps/rr-feedback/rr-feedback");

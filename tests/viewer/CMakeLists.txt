@@ -11,6 +11,11 @@ target_link_libraries(test_sim_controller PRIVATE
     Qt6::Test
 )
 add_test(NAME test_sim_controller COMMAND test_sim_controller)
+# The end-to-end launch test must spawn THIS build tree's rr-feedback, not
+# whatever a walk-up from the test binary happens to find (BUG-29).
+set_tests_properties(test_sim_controller PROPERTIES
+    ENVIRONMENT "CUTESIM_BIN=$<TARGET_FILE:rr-feedback>"
+)
 
 # ── C++ unit tests for ScenarioBridge ──────────────────────────────────────
 add_executable(test_scenario_bridge
