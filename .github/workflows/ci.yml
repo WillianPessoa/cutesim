@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  linux:
+    name: Build · ctest · lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-dev libfontconfig1-dev
+
+      # Same LLVM major as the local toolchain (Qt Creator bundles 21), so
+      # clang-format and clang-tidy agree with the versioned baselines.
+      - name: LLVM 21
+        run: |
+          wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+          sudo bash /tmp/llvm.sh 21
+          sudo apt-get install -y clang-format-21 clang-tidy-21
+          sudo ln -sf "$(command -v clang-format-21)" /usr/local/bin/clang-format
+          sudo ln -sf "$(command -v clang-tidy-21)" /usr/local/bin/clang-tidy
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.*"
+          cache: true
+
+      - name: Configure
+        run: CMAKE_PREFIX_PATH="$QT_ROOT_DIR" cmake --preset debug
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Test
+        run: ctest --preset debug
+
+      # The K1 baseline (apps/viewer/docs/qmllint-baseline.md) is still being
+      # paid down by K2/K9/K10, so gate on a budget instead of zero: fail only
+      # when NEW warnings appear. Tighten .github/qmllint-budget as it shrinks.
+      - name: qmllint budget
+        run: |
+          cmake --build build --target all_qmllint 2>&1 | tee qmllint.log || true
+          count=$(grep -c 'Warning: ' qmllint.log || true)
+          budget=$(cat .github/qmllint-budget)
+          echo "qmllint warnings: $count (budget: $budget)"
+          [ "$count" -le "$budget" ]
+
+      - name: Format check
+        run: |
+          cmake --build build --target format
+          git diff --exit-code
+
+      - name: clang-tidy
+        run: scripts/lint-cxx.sh
+
+  asan:
+    name: ASan + UBSan
+    runs-on: ubuntu-latest
+    env:
+      # Leaks are the Valgrind job's business (and Qt's global objects would
+      # drown the report); ASan is here for memory errors, UBSan for UB.
+      ASAN_OPTIONS: detect_leaks=0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-dev libfontconfig1-dev
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.*"
+          cache: true
+
+      - name: Configure
+        run: CMAKE_PREFIX_PATH="$QT_ROOT_DIR" cmake --preset asan
+
+      - name: Build
+        run: cmake --build build-asan -j"$(nproc)"
+
+      - name: Test
+        run: ctest --preset asan
+
+  memcheck:
+    name: Valgrind memcheck (C lib)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+
+      # ASan's blind spot on macOS; no Qt needed — CUTESIM_VIEWER=OFF builds
+      # just the C lib, the CLI and their tests.
+      - name: Configure
+        run: cmake -S . -B build-memcheck -DCMAKE_BUILD_TYPE=Debug -DCUTESIM_VIEWER=OFF
+
+      - name: Build
+        run: cmake --build build-memcheck -j"$(nproc)"
+
+      - name: Run test binaries under valgrind
+        run: |
+          set -e
+          for t in queue/test_queue process/test_process \
+                   simulation/test_simulation statistics/test_statistics \
+                   scenario/test_scenario common/test_snapshot \
+                   common/test_emit_file common/test_emit_tcp; do
+            echo "== valgrind: $t =="
+            valgrind --error-exitcode=1 --leak-check=full \
+              --errors-for-leak-kinds=definite,indirect \
+              "build-memcheck/tests/$t"
+          done
