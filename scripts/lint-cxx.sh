@@ -3,10 +3,15 @@
 # units, using the debug preset's compile_commands.json.
 #
 # Usage:
-#   scripts/lint-cxx.sh              # clang-tidy + clazy, all project TUs
-#   scripts/lint-cxx.sh --tidy-only
+#   scripts/lint-cxx.sh              # clang-tidy over all project TUs
+#   scripts/lint-cxx.sh --with-clazy # also run clazy on the Qt TUs (see below)
 #   scripts/lint-cxx.sh --clazy-only
 #   scripts/lint-cxx.sh src/queue.c  # restrict to the given files
+#
+# BUG-28: clazy-standalone never finishes on the tests/viewer TUs (hangs on
+# test_sim_controller.cpp; the app TUs are fine). Until that is understood,
+# clazy is OFF by default — enable it explicitly with --with-clazy or
+# --clazy-only, ideally on specific files.
 #
 # Exit status is non-zero if any tool emitted a warning, so CI can gate on it.
 
@@ -24,12 +29,16 @@ CLANG_TIDY="$(find_tool clang-tidy)"
 CLAZY="$(find_tool clazy-standalone)"
 
 RUN_TIDY=1
-RUN_CLAZY=1
+RUN_CLAZY=0 # BUG-28: opt-in until the tests/viewer hang is fixed
 FILES=()
 for arg in "$@"; do
     case "$arg" in
     --tidy-only) RUN_CLAZY=0 ;;
-    --clazy-only) RUN_TIDY=0 ;;
+    --with-clazy) RUN_CLAZY=1 ;;
+    --clazy-only)
+        RUN_TIDY=0
+        RUN_CLAZY=1
+        ;;
     *) FILES+=("$arg") ;;
     esac
 done

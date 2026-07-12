@@ -57,10 +57,16 @@ resource leak; found by `clang-analyzer-unix.Stream`.
 ## How to run
 
 ```sh
-scripts/lint-cxx.sh               # everything (tidy + clazy)
-scripts/lint-cxx.sh --tidy-only src/scenario.c
-scripts/lint-cxx.sh --clazy-only
+scripts/lint-cxx.sh               # clang-tidy over all project TUs
+scripts/lint-cxx.sh src/scenario.c
+scripts/lint-cxx.sh --with-clazy  # opt-in: see BUG-28 below
 ```
+
+**BUG-28**: clazy-standalone never completes on the `tests/viewer` TUs
+(every full run so far sat on `test_sim_controller.cpp` for 10+ minutes
+until killed; the app TUs finish in seconds). clazy is therefore opt-in
+(`--with-clazy` / `--clazy-only`) until the hang is diagnosed. The clazy
+baseline above came from the app TUs, which did complete.
 
 Requires a configured debug preset (`cmake --preset debug`) for
 `compile_commands.json`. Tools are found in `PATH` first, then in Qt
