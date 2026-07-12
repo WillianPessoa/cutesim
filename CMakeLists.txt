@@ -46,9 +46,15 @@ target_compile_options(cutesim_lib PRIVATE -Wconversion)
 
 include(CTest)
 
+# OFF skips every target that needs Qt, so the C lib and CLI build on a
+# machine (or CI job) without a Qt installation.
+option(CUTESIM_VIEWER "Build the Qt viewer app and its tests" ON)
+
 add_subdirectory(apps/common)
 add_subdirectory(apps/rr-feedback)
-add_subdirectory(apps/viewer)
+if(CUTESIM_VIEWER)
+    add_subdirectory(apps/viewer)
+endif()
 add_subdirectory(tests)
 
 # `format` rewrites every C/C++ and QML source in place. The pre-commit hook
