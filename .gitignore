@@ -1,6 +1,8 @@
 build/
 build-asan/
 .cache/
+presentation/
+.claude/
 /docs/*
 !/docs/lint-cxx-baseline.md
 
