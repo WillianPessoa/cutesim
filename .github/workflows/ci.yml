@@ -38,7 +38,10 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.11.*"
+          # Exact patch pin: qmlformat output drifts even between patch
+          # releases (6.11.1 re-indents lambda bodies vs 6.11.0). Keep in
+          # lockstep with the local Qt install.
+          version: "6.11.0"
           cache: true
 
       - name: Configure
@@ -87,7 +90,10 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.11.*"
+          # Exact patch pin: qmlformat output drifts even between patch
+          # releases (6.11.1 re-indents lambda bodies vs 6.11.0). Keep in
+          # lockstep with the local Qt install.
+          version: "6.11.0"
           cache: true
 
       - name: Configure
