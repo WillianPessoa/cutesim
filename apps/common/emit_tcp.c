@@ -19,6 +19,9 @@
 /* Copy the single whitespace-delimited token of `line` into `word` (capacity
    `cap`). Returns the number of tokens seen: 0 (blank), 1 (exactly one token,
    stored in word), or 2 (a second token exists — caller treats as malformed). */
+/* NOLINTBEGIN(clang-analyzer-security.ArrayBound) — glibc's isspace is a
+   table lookup and the analyzer treats the network byte as a tainted index,
+   but the unsigned char cast bounds it to 0..255, inside the table's domain. */
 static int single_token(const char *line, char *word, size_t cap) {
     const char *p = line;
     while (*p && isspace((unsigned char)*p)) {
@@ -42,6 +45,7 @@ static int single_token(const char *line, char *word, size_t cap) {
     }
     return *p == '\0' ? 1 : 2;
 }
+/* NOLINTEND(clang-analyzer-security.ArrayBound) */
 
 TcpCommand tcp_cmd_parse(const char *line) {
     TcpCommand cmd = { TCP_CMD_INVALID };
