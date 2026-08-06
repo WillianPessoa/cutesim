@@ -12,43 +12,100 @@ routes it back by device — disk returns to LOW, tape and printer to HIGH.
 Workloads are either random (five arrival modes, sampled bursts) or fully
 scripted through scenario files.
 
-## Screenshots
+## A tour of CuteSim
 
 <!--
-  TODO: capture the images below and drop them into screenshots/
-  (create the folder at the repo root — it is tracked, docs/ is not).
-  Suggested size: full window, dark theme. Delete this comment after.
+  TODO: capture the images referenced below and drop them into
+  screenshots/ (create the folder at the repo root — it is tracked,
+  docs/ is not). Suggested size: full window, dark theme.
+  Delete this comment when done.
 -->
 
-### Viewer — live simulation
+### 1. Launch a simulation
 
-<!-- screenshots/viewer-dashboard.png: main window mid-run — CPU view,
-     HIGH/LOW queues, per-device I/O, Gantt timeline and stats bar -->
-![Viewer dashboard](screenshots/viewer-dashboard.png)
+Opening the viewer lands on the launch screen. Pick one of two modes:
 
-### Launch — random workload and scenario picker
+- **Random** — describe a workload: process count, RNG seed, the quantum
+  of each CPU queue, service duration range, one of five arrival modes
+  (batch, bernoulli, geometric, poisson, uniform), I/O probability per
+  CPU tick, how I/O splits across disk/tape/printer, and each device's
+  duration and service mode (concurrent or queued).
+- **Scenario** — run a `.scn` file instead: one of the bundled presets
+  shipped with the app, or your own file picked from disk. The file is
+  validated inline by the same C parser the engine uses.
+
+Pressing **LAUNCH** spawns a fresh `rr-feedback --serve` child on a
+random TCP port and connects the viewer to it — the UI is a pure client;
+every tick is computed by the C engine.
 
 <!-- screenshots/launch-random.png: LaunchOverlay in random mode (the
      two-column WORKLOAD & SCHEDULING / IO form) -->
-![Launch overlay — random mode](screenshots/launch-random.png)
+![Launch — random workload](screenshots/launch-random.png)
 
 <!-- screenshots/launch-scenario.png: LaunchOverlay in scenario mode with
      the bundled presets listed -->
-![Launch overlay — scenario mode](screenshots/launch-scenario.png)
+![Launch — scenario mode](screenshots/launch-scenario.png)
 
-### Scenario editor
+### 2. Watch the scheduler work
+
+The dashboard shows one engine tick at a time, advanced with the step
+control. Reading it top to bottom:
+
+- **CPU** — the running process, its quantum usage (`N/M`) and remaining
+  service time. When a process is preempted, finishes, or leaves for
+  I/O, the slot shows a ghost tag for that tick (e.g. `→ LOW QUEUE`)
+  so the transition is visible instead of a blank.
+- **HIGH / LOW queues** — ready processes with their remaining burst.
+  A process that exhausts its quantum drops from HIGH to LOW; newly
+  enqueued processes flash highlighted.
+- **I/O lanes** — one per device. Disk returns the process to the LOW
+  queue; tape and printer return it to HIGH (that is the "feedback").
+- **Gantt timeline** — per-process execution history, including idle
+  ticks (I/O dispatch consumes the tick — Model A).
+- **Stats bar** — live CPU utilization, throughput, and wait averages.
+
+Clicking any process opens its detail view: an exact execution strip
+plus the event log filtered to that PID.
+
+<!-- screenshots/viewer-dashboard.png: main window mid-run — CPU view,
+     HIGH/LOW queues, per-device I/O, Gantt timeline and stats bar -->
+![Live dashboard](screenshots/viewer-dashboard.png)
+
+<!-- screenshots/process-detail.png: ProcessDetail after clicking a
+     process — execution strip + per-process event log -->
+![Process detail](screenshots/process-detail.png)
+
+### 3. Script your own scenario
+
+The scenario editor builds `.scn` files without hand-editing: global
+scheduling parameters on the left, scripted processes on the right.
+Each process gets an arrival tick, a CPU burst, and an I/O timeline
+written as `tick:device[:duration]` — the tick is relative to the
+process's own CPU progress, so scripted I/O always fires. Everything is
+validated live by the C parser; **SAVE & USE** feeds the file straight
+back into the launch screen.
 
 <!-- screenshots/scenario-editor.png: ScenarioEditor with globals on the
      left and a scripted process timeline on the right -->
 ![Scenario editor](screenshots/scenario-editor.png)
 
-### Inspector — time travel
+### 4. Inspect any tick, even past ones
+
+The inspector panel shows the raw snapshot JSON and the launch
+configuration of the running simulation. Every tick is recorded, so the
+`‹ ›` controls time-travel through history — the events and snapshot
+follow the tick being viewed, and the LIVE chip jumps back to the
+present.
 
 <!-- screenshots/inspector-timetravel.png: InspectorPanel browsing a
      recorded tick (‹ › navigation, tick N/M, LIVE chip) -->
-![Inspector time travel](screenshots/inspector-timetravel.png)
+![Inspector — time travel](screenshots/inspector-timetravel.png)
 
-### CLI trace
+### 5. Or skip the UI entirely
+
+The CLI runs the same engine standalone: `--trace` prints every tick —
+CPU occupancy, both queues, I/O lanes and the tick's event log — and a
+final statistics summary.
 
 <!-- screenshots/cli-trace.png: terminal running
      ./build/apps/rr-feedback/rr-feedback scenarios/03-scripted-showcase.scn --trace
