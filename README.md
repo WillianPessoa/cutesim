@@ -6,6 +6,55 @@ Queue-based process scheduler simulator: a Round Robin with Feedback engine
 written as a C11 library, driven by a CLI app and visualized live by a
 Qt 6 / QML viewer.
 
+The scheduler runs two CPU queues (HIGH / LOW) with per-queue quantums:
+a process that exhausts its quantum is demoted to LOW, and I/O completion
+routes it back by device — disk returns to LOW, tape and printer to HIGH.
+Workloads are either random (five arrival modes, sampled bursts) or fully
+scripted through scenario files.
+
+## Screenshots
+
+<!--
+  TODO: capture the images below and drop them into screenshots/
+  (create the folder at the repo root — it is tracked, docs/ is not).
+  Suggested size: full window, dark theme. Delete this comment after.
+-->
+
+### Viewer — live simulation
+
+<!-- screenshots/viewer-dashboard.png: main window mid-run — CPU view,
+     HIGH/LOW queues, per-device I/O, Gantt timeline and stats bar -->
+![Viewer dashboard](screenshots/viewer-dashboard.png)
+
+### Launch — random workload and scenario picker
+
+<!-- screenshots/launch-random.png: LaunchOverlay in random mode (the
+     two-column WORKLOAD & SCHEDULING / IO form) -->
+![Launch overlay — random mode](screenshots/launch-random.png)
+
+<!-- screenshots/launch-scenario.png: LaunchOverlay in scenario mode with
+     the bundled presets listed -->
+![Launch overlay — scenario mode](screenshots/launch-scenario.png)
+
+### Scenario editor
+
+<!-- screenshots/scenario-editor.png: ScenarioEditor with globals on the
+     left and a scripted process timeline on the right -->
+![Scenario editor](screenshots/scenario-editor.png)
+
+### Inspector — time travel
+
+<!-- screenshots/inspector-timetravel.png: InspectorPanel browsing a
+     recorded tick (‹ › navigation, tick N/M, LIVE chip) -->
+![Inspector time travel](screenshots/inspector-timetravel.png)
+
+### CLI trace
+
+<!-- screenshots/cli-trace.png: terminal running
+     ./build/apps/rr-feedback/rr-feedback scenarios/03-scripted-showcase.scn --trace
+     (or replace the image with a fenced text block of the real output) -->
+![CLI trace](screenshots/cli-trace.png)
+
 ## Layout
 
 | Path | What it is |
