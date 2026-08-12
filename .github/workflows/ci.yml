@@ -136,3 +136,32 @@ jobs:
               --errors-for-leak-kinds=definite,indirect \
               "build-memcheck/tests/$t"
           done
+
+  windows:
+    name: Windows build · ctest
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # cl/link/rc on PATH for the Ninja generator
+      - name: MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          # Same patch pin as the Linux jobs (qmlformat drift), MSVC kit.
+          version: "6.11.0"
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Configure
+        run: cmake --preset win
+        env:
+          CMAKE_PREFIX_PATH: ${{ env.QT_ROOT_DIR }}
+
+      - name: Build
+        run: cmake --build build -j4
+
+      - name: Test
+        run: ctest --preset win
