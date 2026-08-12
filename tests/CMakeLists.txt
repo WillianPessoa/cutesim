@@ -1,4 +1,7 @@
 include(FetchContent)
+# Keep GTest on the shared CRT: its default of swapping /MD for /MT on MSVC
+# would clash with every other target at link time. No-op elsewhere.
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git

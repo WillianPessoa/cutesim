@@ -15,7 +15,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-set(CUTESIM_WARNING_FLAGS -Wall -Wextra)
+# /utf-8 rides along on MSVC (and is restored with the warning flags in
+# tests/): without it cl reads the UTF-8 literals in display.c as the ANSI
+# codepage and mangles the accented output.
+if(MSVC)
+    set(CUTESIM_WARNING_FLAGS /W4 /utf-8)
+else()
+    set(CUTESIM_WARNING_FLAGS -Wall -Wextra)
+endif()
 add_compile_options(${CUTESIM_WARNING_FLAGS})
 
 find_program(CCACHE_PROGRAM ccache)
@@ -42,7 +49,9 @@ target_sources(cutesim_lib PRIVATE
 )
 target_include_directories(cutesim_lib PUBLIC include)
 target_compile_features(cutesim_lib PRIVATE c_std_11)
-target_compile_options(cutesim_lib PRIVATE -Wconversion)
+if(NOT MSVC)
+    target_compile_options(cutesim_lib PRIVATE -Wconversion)
+endif()
 
 include(CTest)
 
