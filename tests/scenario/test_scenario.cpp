@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <cstdio>
 #include <cstring>
-#include <unistd.h>
+#include <fstream>
+#include <string>
 
 extern "C" {
 #include "cutesim/scenario.h"
@@ -214,15 +216,15 @@ TEST(ScenarioValidation, RejectsIoAtOrBeyondBurst) {
 
 TEST(ScenarioFile, ReadsAndParsesAFile) {
     DESCRIBE("scenario_parse_file reads the file and parses its contents");
-    char path[] = "/tmp/cutesim_scenario_XXXXXX";
-    int fd      = mkstemp(path);
-    ASSERT_NE(fd, -1);
-    const char *text = "quantum-hi = 7\n[process]\narrival = 1\nburst = 4\n";
-    ASSERT_EQ(write(fd, text, strlen(text)), (ssize_t)strlen(text));
-    close(fd);
+    std::string path = testing::TempDir() + "cutesim_scenario.scn";
+    {
+        std::ofstream out(path, std::ios::binary);
+        ASSERT_TRUE(out.is_open());
+        out << "quantum-hi = 7\n[process]\narrival = 1\nburst = 4\n";
+    }
 
     Scenario sc = {};
-    int rc      = scenario_parse_file(path, &sc);
+    int rc      = scenario_parse_file(path.c_str(), &sc);
 
     EXPECT_EQ(rc, 0);
     EXPECT_EQ(sc.config.quantum_hi, 7);
@@ -230,7 +232,7 @@ TEST(ScenarioFile, ReadsAndParsesAFile) {
     EXPECT_EQ(sc.processes[0].burst, 4);
 
     scenario_free(&sc);
-    unlink(path);
+    std::remove(path.c_str());
 }
 
 TEST(ScenarioFile, MissingFileReturnsError) {

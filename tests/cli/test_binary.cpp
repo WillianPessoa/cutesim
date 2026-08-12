@@ -2,13 +2,27 @@
 
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <string>
-#include <unistd.h>
 
-/* Run the binary with the given arguments and capture stdout + exit code. */
+/* Run the binary with the given arguments and capture stdout + exit code.
+   _popen/_pclose are cmd.exe-backed and return the exit code directly;
+   popen/pclose return a wait status that WEXITSTATUS unpacks. */
 static std::string run(const std::string &args, int *exit_code = nullptr) {
-    std::string cmd = std::string(RR_FEEDBACK_BIN) + " " + args + " 2>&1";
-    FILE *pipe      = popen(cmd.c_str(), "r");
+    std::string bin = RR_FEEDBACK_BIN;
+#ifdef _WIN32
+    for (char &c : bin) {
+        if (c == '/') {
+            c = '\\'; /* cmd.exe reads / as a switch in the program path */
+        }
+    }
+#endif
+    std::string cmd = bin + " " + args + " 2>&1";
+#ifdef _WIN32
+    FILE *pipe = _popen(cmd.c_str(), "r");
+#else
+    FILE *pipe = popen(cmd.c_str(), "r");
+#endif
     if (!pipe) {
         if (exit_code) {
             *exit_code = -1;
@@ -22,10 +36,17 @@ static std::string run(const std::string &args, int *exit_code = nullptr) {
         output += buf;
     }
 
+#ifdef _WIN32
+    int status = _pclose(pipe);
+    if (exit_code) {
+        *exit_code = status;
+    }
+#else
     int status = pclose(pipe);
     if (exit_code) {
         *exit_code = WEXITSTATUS(status);
     }
+#endif
     return output;
 }
 
@@ -79,15 +100,14 @@ TEST(Binary, BatchRunShowsStatisticsReport) {
 // --- Scenario file ---
 
 static std::string write_temp(const char *contents) {
-    char path[] = "/tmp/cutesim_bin_scn_XXXXXX";
-    int fd      = mkstemp(path);
-    if (fd == -1) {
+    static int counter = 0;
+    std::string path   = testing::TempDir() + "cutesim_bin_scn_" + std::to_string(counter++);
+    std::ofstream out(path, std::ios::binary);
+    if (!out) {
         return "";
     }
-    ssize_t n = write(fd, contents, std::strlen(contents));
-    (void)n;
-    close(fd);
-    return std::string(path);
+    out << contents;
+    return path;
 }
 
 TEST(Binary, RunsAScriptedScenarioFile) {
@@ -106,7 +126,7 @@ TEST(Binary, RunsAScriptedScenarioFile) {
     EXPECT_NE(out.find("CONCLU"), std::string::npos); /* simulation completed */
     EXPECT_NE(out.find("ESTAT"), std::string::npos);  /* statistics printed */
 
-    unlink(path.c_str());
+    std::remove(path.c_str());
 }
 
 TEST(Binary, MalformedScenarioFileExitsNonZero) {
@@ -118,5 +138,5 @@ TEST(Binary, MalformedScenarioFileExitsNonZero) {
 
     EXPECT_NE(code, 0);
 
-    unlink(path.c_str());
+    std::remove(path.c_str());
 }
