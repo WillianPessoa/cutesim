@@ -181,6 +181,12 @@ int SimController::choosePort(const QVariantMap &params) {
 }
 
 QString SimController::findBinary() {
+#ifdef Q_OS_WIN
+    const QString exe = QStringLiteral("rr-feedback.exe");
+#else
+    const QString exe = QStringLiteral("rr-feedback");
+#endif
+
     QByteArray env = qgetenv("CUTESIM_BIN");
     if (!env.isEmpty()) {
         QString s = QString::fromLocal8Bit(env);
@@ -190,20 +196,20 @@ QString SimController::findBinary() {
     }
 
     QString base = QCoreApplication::applicationDirPath();
-    if (QFileInfo::exists(base + "/rr-feedback")) {
-        return base + "/rr-feedback";
+    if (QFileInfo::exists(base + "/" + exe)) {
+        return base + "/" + exe;
     }
 
     /* Sibling target in the same build tree (<build>/apps/viewer →
        <build>/apps/rr-feedback), whatever the build dir is called (BUG-29). */
-    QString sibling = QDir(base).filePath("../rr-feedback/rr-feedback");
+    QString sibling = QDir(base).filePath("../rr-feedback/" + exe);
     if (QFileInfo::exists(sibling)) {
         return QDir::cleanPath(sibling);
     }
 
     QDir dir(base);
     for (int i = 0; i < 8; ++i) {
-        QString c = dir.filePath("build/apps/rr-feedback/rr-feedback");
+        QString c = dir.filePath("build/apps/rr-feedback/" + exe);
         if (QFileInfo::exists(c)) {
             return c;
         }
