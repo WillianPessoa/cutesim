@@ -1,16 +1,72 @@
 #include "emit_tcp.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+
+#include <ws2tcpip.h>
+#else
 #include <arpa/inet.h>
-#include <ctype.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
+
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 #include "snapshot.h"
+
+/* -------------------------------------------------------------------------
+ * Platform seam
+ *
+ * Winsock and BSD sockets disagree on the descriptor type (SOCKET vs int),
+ * the I/O calls (send/recv vs write/read), teardown (closesocket vs close)
+ * and process-wide setup (WSAStartup vs ignoring SIGPIPE). Everything below
+ * this block is written against these five helpers and compiles unchanged
+ * on both sides.
+ * ---------------------------------------------------------------------- */
+
+#ifdef _WIN32
+
+typedef SOCKET SockFd;
+
+static int sock_valid(SockFd fd) { return fd != INVALID_SOCKET; }
+
+static int sock_read(SockFd fd, char *buf, size_t len) { return recv(fd, buf, (int)len, 0); }
+
+static int sock_write(SockFd fd, const char *buf, size_t len) { return send(fd, buf, (int)len, 0); }
+
+static void sock_close(SockFd fd) { closesocket(fd); }
+
+static int sock_startup(void) {
+    WSADATA wsa;
+    return WSAStartup(MAKEWORD(2, 2), &wsa) == 0 ? 0 : -1;
+}
+
+#else
+
+typedef int SockFd;
+
+static int sock_valid(SockFd fd) { return fd >= 0; }
+
+static int sock_read(SockFd fd, char *buf, size_t len) { return (int)read(fd, buf, len); }
+
+static int sock_write(SockFd fd, const char *buf, size_t len) { return (int)write(fd, buf, len); }
+
+static void sock_close(SockFd fd) { close(fd); }
+
+/* A client that disconnects mid-write must surface as a write error, not
+   kill the process. */
+static int sock_startup(void) {
+    signal(SIGPIPE, SIG_IGN);
+    return 0;
+}
+
+#endif
 
 /* -------------------------------------------------------------------------
  * Command parsing (pure)
@@ -73,10 +129,10 @@ TcpCommand tcp_cmd_parse(const char *line) {
 
 /* Write the whole buffer, tolerating short writes. Returns 0 on success,
    -1 if the peer went away. SIGPIPE is masked process-wide in emit_tcp_serve. */
-static int write_all(int fd, const char *buf, size_t len) {
+static int write_all(SockFd fd, const char *buf, size_t len) {
     size_t off = 0;
     while (off < len) {
-        ssize_t w = write(fd, buf + off, len - off);
+        int w = sock_write(fd, buf + off, len - off);
         if (w <= 0) {
             return -1;
         }
@@ -86,7 +142,7 @@ static int write_all(int fd, const char *buf, size_t len) {
 }
 
 /* Serialize the current snapshot and send it as one '\n'-terminated line. */
-static int send_snapshot(int fd, const Simulation *s) {
+static int send_snapshot(SockFd fd, const Simulation *s) {
     char stack[SNAP_STACK];
     char *heap = NULL;
     int n      = snapshot_to_json(s, stack, sizeof(stack));
@@ -109,7 +165,7 @@ static int send_snapshot(int fd, const Simulation *s) {
     return rc;
 }
 
-static int send_error(int fd, const char *msg) {
+static int send_error(SockFd fd, const char *msg) {
     char line[128];
     int n = snprintf(line, sizeof(line), "{\"error\":\"%s\"}\n", msg);
     return write_all(fd, line, (size_t)n);
@@ -122,11 +178,11 @@ static int send_error(int fd, const char *msg) {
 /* Read one line (up to '\n') from fd into buf. Returns the line length
    (excluding the newline) on success, -1 on EOF/error. Overlong lines are
    truncated at the buffer boundary; the remainder is left for the next read. */
-static int recv_line(int fd, char *buf, size_t cap) {
+static int recv_line(SockFd fd, char *buf, size_t cap) {
     size_t n = 0;
     for (;;) {
         char c;
-        ssize_t r = read(fd, &c, 1);
+        int r = sock_read(fd, &c, 1);
         if (r <= 0) {
             return -1;
         }
@@ -143,7 +199,7 @@ static int recv_line(int fd, char *buf, size_t cap) {
 
 /* Handle one connected client until it disconnects. sim points to the caller's
    Simulation pointer so RESET can swap it for a fresh instance. */
-static void serve_client(int fd,
+static void serve_client(SockFd fd,
                          Simulation **sim,
                          SimConfig cfg,
                          void (*spawn)(Simulation *, void *),
@@ -188,19 +244,21 @@ int emit_tcp_serve(SimConfig cfg,
                    void (*spawn)(Simulation *sim, void *ctx),
                    void *spawn_ctx,
                    int port) {
-    signal(SIGPIPE, SIG_IGN);
+    if (sock_startup() != 0) {
+        return -1;
+    }
 
     if (port <= 0) {
         port = TCP_DEFAULT_PORT;
     }
 
-    int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listen_fd < 0) {
+    SockFd listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (!sock_valid(listen_fd)) {
         return -1;
     }
 
     int one = 1;
-    setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
 
     struct sockaddr_in addr = { 0 };
     addr.sin_family         = AF_INET;
@@ -208,27 +266,27 @@ int emit_tcp_serve(SimConfig cfg,
     addr.sin_port           = htons((uint16_t)port);
 
     if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) != 0 || listen(listen_fd, 1) != 0) {
-        close(listen_fd);
+        sock_close(listen_fd);
         return -1;
     }
 
     Simulation *sim = sim_create(cfg);
     if (!sim) {
-        close(listen_fd);
+        sock_close(listen_fd);
         return -1;
     }
     spawn(sim, spawn_ctx);
 
     for (;;) {
-        int client = accept(listen_fd, NULL, NULL);
-        if (client < 0) {
+        SockFd client = accept(listen_fd, NULL, NULL);
+        if (!sock_valid(client)) {
             break;
         }
         serve_client(client, &sim, cfg, spawn, spawn_ctx);
-        close(client);
+        sock_close(client);
     }
 
     sim_destroy(sim);
-    close(listen_fd);
+    sock_close(listen_fd);
     return 0;
 }
