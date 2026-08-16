@@ -153,6 +153,11 @@ jobs:
           # Same patch pin as the Linux jobs (qmlformat drift), MSVC kit.
           version: "6.11.0"
           arch: win64_msvc2022_64
+          # The released aqtinstall (3.3.0) predates the split per-toolchain
+          # repo layout Qt adopted for 6.10+ on Windows; the fix (PR #1000)
+          # is only on master. Pinned to a known-good commit — drop this once
+          # a release past 3.3.0 ships.
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@16db45a70b5905ad596941b223469bc86a56901e
           cache: true
 
       - name: Configure
