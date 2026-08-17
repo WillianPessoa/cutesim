@@ -14,6 +14,7 @@
 #endif
 
 #include <ctype.h>
+#include <stdint.h> /* uint16_t — pulled in via <netinet/in.h> on POSIX only */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
