@@ -227,67 +227,11 @@ void sim_step(Simulation *s) {
         free(arrived);
     }
 
-    /* 2. Schedule if CPU idle ------------------------------------------- */
-    if (!s->running) {
-        int from_lo   = 0;
-        Process *next = queue_dequeue(&s->hi_queue);
-        if (!next) {
-            next    = queue_dequeue(&s->lo_queue);
-            from_lo = 1;
-        }
-        if (next) {
-            must_set_status(next, PROC_RUNNING);
-            s->running      = next;
-            s->quantum_used = 0;
-            if (next->first_cpu_tick < 0) {
-                next->first_cpu_tick = s->tick;
-            }
-            add_event(s, SIM_EVT_SCHEDULED, next->pid, from_lo, 0);
-        }
-    }
-
-    /* 3. Tick I/O queues (processes already waiting before this tick ran) -- */
-    for (int d = 0; d < 3; d++) {
-        Queue *q        = dev_queues[d];
-        IoMode mode     = device_io_mode(s->cfg, dev_types[d]);
-        QueueNode *node = q->head;
-        while (node) {
-            Process *p = node->data;
-            if (mode == IO_MODE_CONCURRENT) {
-                p->io_ticks++;
-                if (dev_types[d] == DEVICE_DISK) {
-                    p->io_ticks_disk++;
-                } else if (dev_types[d] == DEVICE_TAPE) {
-                    p->io_ticks_tape++;
-                } else {
-                    p->io_ticks_printer++;
-                }
-                p->io_remaining--;
-                if (p->io_remaining > 0) {
-                    add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
-                }
-            } else {
-                if (node == q->head) {
-                    p->io_ticks++;
-                    if (dev_types[d] == DEVICE_DISK) {
-                        p->io_ticks_disk++;
-                    } else if (dev_types[d] == DEVICE_TAPE) {
-                        p->io_ticks_tape++;
-                    } else {
-                        p->io_ticks_printer++;
-                    }
-                    p->io_remaining--;
-                    if (p->io_remaining > 0) {
-                        add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
-                    }
-                }
-                break;
-            }
-            node = node->next;
-        }
-    }
-
-    /* 4. Promote completed I/O to CPU queues ----------------------------- */
+    /* 2. Promote I/O completed on earlier ticks to the CPU queues --------
+       Runs before scheduling so a process returning from I/O can be
+       dispatched — and receive CPU — in this same tick when the CPU is free
+       (BUG-30, option B). The visible io_return therefore lands one tick
+       after the device's last service tick, together with the dispatch. */
     for (int d = 0; d < 3; d++) {
         Queue *q       = dev_queues[d];
         DeviceType dev = dev_types[d];
@@ -338,6 +282,68 @@ void sim_step(Simulation *s) {
         }
 
         free(finished);
+    }
+
+    /* 3. Schedule if CPU idle ------------------------------------------- */
+    if (!s->running) {
+        int from_lo   = 0;
+        Process *next = queue_dequeue(&s->hi_queue);
+        if (!next) {
+            next    = queue_dequeue(&s->lo_queue);
+            from_lo = 1;
+        }
+        if (next) {
+            must_set_status(next, PROC_RUNNING);
+            s->running      = next;
+            s->quantum_used = 0;
+            if (next->first_cpu_tick < 0) {
+                next->first_cpu_tick = s->tick;
+            }
+            add_event(s, SIM_EVT_SCHEDULED, next->pid, from_lo, 0);
+        }
+    }
+
+    /* 4. Tick I/O queues (processes already waiting before this tick ran).
+       A process whose service hits zero here stays in the device queue and
+       is promoted at the top of the next tick — one service per tick. */
+    for (int d = 0; d < 3; d++) {
+        Queue *q        = dev_queues[d];
+        IoMode mode     = device_io_mode(s->cfg, dev_types[d]);
+        QueueNode *node = q->head;
+        while (node) {
+            Process *p = node->data;
+            if (mode == IO_MODE_CONCURRENT) {
+                p->io_ticks++;
+                if (dev_types[d] == DEVICE_DISK) {
+                    p->io_ticks_disk++;
+                } else if (dev_types[d] == DEVICE_TAPE) {
+                    p->io_ticks_tape++;
+                } else {
+                    p->io_ticks_printer++;
+                }
+                p->io_remaining--;
+                if (p->io_remaining > 0) {
+                    add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
+                }
+            } else {
+                if (node == q->head) {
+                    p->io_ticks++;
+                    if (dev_types[d] == DEVICE_DISK) {
+                        p->io_ticks_disk++;
+                    } else if (dev_types[d] == DEVICE_TAPE) {
+                        p->io_ticks_tape++;
+                    } else {
+                        p->io_ticks_printer++;
+                    }
+                    p->io_remaining--;
+                    if (p->io_remaining > 0) {
+                        add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
+                    }
+                }
+                break;
+            }
+            node = node->next;
+        }
     }
 
     /* 5. Tick running process ------------------------------------------- */
