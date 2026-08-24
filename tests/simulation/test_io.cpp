@@ -180,11 +180,25 @@ TEST(ConcurrentIo, BothProcessesCompleteAtSameTick) {
     sim_add_process(s, p2);
     s->pending_count = 0;
 
-    sim_run(s, DISK_DURATION); /* after DISK_DURATION ticks both should have completed */
+    sim_run(s, DISK_DURATION);                /* both consume their whole service in lockstep */
+    EXPECT_EQ(queue_size(&s->disk_queue), 2); /* done, promoted only next tick */
+    EXPECT_EQ(p1->io_remaining, 0);
+    EXPECT_EQ(p2->io_remaining, 0);
 
+    /* Return tick: both promoted to lo_queue (disk → lo) in the same tick;
+       the CPU is idle, so the head is dispatched immediately (BUG-30). */
+    sim_step(s);
+    int returns = 0;
+    for (int i = 0; i < s->event_count; i++) {
+        if (s->events[i].type == SIM_EVT_IO_RETURN) {
+            returns++;
+        }
+    }
+    EXPECT_EQ(returns, 2);
     EXPECT_EQ(queue_size(&s->disk_queue), 0);
-    /* both return to lo_queue (disk → lo) */
-    EXPECT_EQ(queue_size(&s->lo_queue), 2);
+    EXPECT_EQ(s->running, p1);
+    EXPECT_EQ(queue_size(&s->lo_queue), 1);
+    EXPECT_EQ(queue_peek(&s->lo_queue), p2);
 
     sim_destroy(s);
 }
@@ -247,12 +261,21 @@ TEST(QueueIo, SecondProcessDelayedBehindFirst) {
     sim_add_process(s, p2);
     s->pending_count = 0;
 
-    sim_run(s, DISK_DURATION); /* p1 completes; p2 hasn't started */
-
-    EXPECT_EQ(queue_size(&s->disk_queue), 1);   /* only p2 remains */
+    sim_run(s, DISK_DURATION);                /* p1 consumes its whole service; p2 untouched */
+    EXPECT_EQ(queue_size(&s->disk_queue), 2); /* p1 done, promoted only next tick */
+    EXPECT_EQ(p1->io_remaining, 0);
     EXPECT_EQ(p2->io_remaining, DISK_DURATION); /* p2 not yet decremented */
 
-    sim_run(s, DISK_DURATION); /* now p2 runs its ticks */
+    /* Return tick: p1 leaves the device; p2 becomes head and starts its
+       service in this same tick (promotion runs before the I/O tick). */
+    sim_step(s);
+    EXPECT_EQ(queue_size(&s->disk_queue), 1);
+    EXPECT_EQ(queue_peek(&s->disk_queue), p2);
+    EXPECT_EQ(p2->io_remaining, DISK_DURATION - 1);
+
+    sim_run(s, DISK_DURATION - 1); /* p2 finishes its service... */
+    EXPECT_EQ(p2->io_remaining, 0);
+    sim_step(s); /* ...and is promoted one tick later */
     EXPECT_EQ(queue_size(&s->disk_queue), 0);
 
     sim_destroy(s);
