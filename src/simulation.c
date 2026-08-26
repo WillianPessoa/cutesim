@@ -322,9 +322,7 @@ void sim_step(Simulation *s) {
                     p->io_ticks_printer++;
                 }
                 p->io_remaining--;
-                if (p->io_remaining > 0) {
-                    add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
-                }
+                add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
             } else {
                 if (node == q->head) {
                     p->io_ticks++;
@@ -336,9 +334,7 @@ void sim_step(Simulation *s) {
                         p->io_ticks_printer++;
                     }
                     p->io_remaining--;
-                    if (p->io_remaining > 0) {
-                        add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
-                    }
+                    add_event(s, SIM_EVT_IO_TICK, p->pid, (int)dev_types[d], p->io_remaining);
                 }
                 break;
             }
